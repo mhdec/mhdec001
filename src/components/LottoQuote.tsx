@@ -96,7 +96,7 @@ export const LottoQuote: React.FC<LottoQuoteProps> = ({ onRegisterRefresh }) => 
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="w-full max-w-lg mx-auto px-4 py-4 space-y-5 relative min-h-[calc(100vh-60px)]"
+      className="w-full max-w-lg mx-auto px-4 py-4 space-y-5 relative min-h-[calc(100vh-60px)] overscroll-contain"
     >
       {/* Pull down indicator for mobile */}
       {pullDistance > 0 && (
