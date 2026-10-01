@@ -290,8 +290,52 @@ export const FileTransfer: React.FC = () => {
     );
   });
 
+  // Touch Pull-to-refresh state
+  const [pullDistance, setPullDistance] = useState<number>(0);
+  const touchStartY = useRef<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.scrollY === 0) {
+      touchStartY.current = e.touches[0].clientY;
+    } else {
+      touchStartY.current = 0;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current > 0 && window.scrollY === 0) {
+      const currentY = e.touches[0].clientY;
+      const dist = currentY - touchStartY.current;
+      if (dist > 0) {
+        setPullDistance(Math.min(dist, 100));
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance > 60) {
+      loadCards();
+    }
+    setPullDistance(0);
+    touchStartY.current = 0;
+  };
+
   return (
-    <div className="w-full max-w-lg mx-auto px-4 py-4 space-y-5">
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      className="w-full max-w-lg mx-auto px-4 py-4 space-y-5 relative min-h-[calc(100vh-60px)]"
+    >
+      {/* Pull down indicator for mobile */}
+      {pullDistance > 0 && (
+        <div
+          className="flex items-center justify-center py-2 text-[12px] text-[#cc785c] font-medium transition-all"
+          style={{ height: `${pullDistance}px`, opacity: pullDistance / 60 }}
+        >
+          {pullDistance > 60 ? '손을 떼면 새로고침됩니다' : '아래로 당겨서 새로고침'}
+        </div>
+      )}
       {/* Upload Zone & Form Card */}
       <section className="bg-[#efe9de] border border-[#e6dfd8] rounded-2xl p-5 shadow-xs space-y-4">
         <div className="flex items-center gap-2">
