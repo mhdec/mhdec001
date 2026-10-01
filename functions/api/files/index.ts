@@ -1,45 +1,65 @@
 interface Env {
   FILE_BUCKET: R2Bucket;
+  MEMO_KV: KVNamespace;
 }
 
 const EXPIRATION_MS = 48 * 60 * 60 * 1000; // 48 Hours
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
-    if (!context.env.FILE_BUCKET) {
-      return new Response(JSON.stringify({ files: [] }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    let cards: any[] = [];
 
-    const objects = await context.env.FILE_BUCKET.list();
-    const now = Date.now();
-    const files = [];
-
-    for (const obj of objects.objects) {
-      const uploadedAt = obj.customMetadata?.uploadedAt || obj.uploaded.toISOString();
-      const age = now - new Date(uploadedAt).getTime();
-
-      // Automatically delete files older than 48 hours
-      if (age >= EXPIRATION_MS) {
-        await context.env.FILE_BUCKET.delete(obj.key);
-      } else {
-        files.push({
-          id: obj.key,
-          name: obj.customMetadata?.originalName || obj.key,
-          size: obj.size,
-          type: obj.httpMetadata?.contentType || 'application/octet-stream',
-          uploadedAt,
-          url: `/api/files/${obj.key}`,
-        });
+    // Try reading from KV first
+    if (context.env.MEMO_KV) {
+      const data = await context.env.MEMO_KV.get('shared_file_cards', 'json');
+      if (Array.isArray(data)) {
+        cards = data;
       }
     }
 
-    return new Response(JSON.stringify({ files }), {
+    const now = Date.now();
+    // Filter & cleanup 48h expired cards
+    const validCards = cards.filter((card) => {
+      const age = now - new Date(card.uploadedAt).getTime();
+      return age < EXPIRATION_MS;
+    });
+
+    // Save cleaned cards back if any expired were removed
+    if (context.env.MEMO_KV && validCards.length !== cards.length) {
+      await context.env.MEMO_KV.put('shared_file_cards', JSON.stringify(validCards));
+    }
+
+    return new Response(JSON.stringify({ cards: validCards }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
-    return new Response(JSON.stringify({ files: [], error: err.message }), {
+    return new Response(JSON.stringify({ cards: [], error: err.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+};
+
+export const onRequestPost: PagesFunction<Env> = async (context) => {
+  try {
+    const body: any = await context.request.json();
+    const cards = body.cards || [];
+
+    const now = Date.now();
+    const validCards = cards.filter((card: any) => {
+      const age = now - new Date(card.uploadedAt).getTime();
+      return age < EXPIRATION_MS;
+    });
+
+    if (context.env.MEMO_KV) {
+      await context.env.MEMO_KV.put('shared_file_cards', JSON.stringify(validCards));
+    }
+
+    return new Response(JSON.stringify({ success: true, cards: validCards }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

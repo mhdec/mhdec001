@@ -112,9 +112,20 @@ export const FileTransfer: React.FC = () => {
     loadCards();
   }, [loadCards]);
 
-  const saveCardsToStorage = (updated: FileGroupCard[]) => {
+  const saveCardsToStorage = async (updated: FileGroupCard[]) => {
     setCards(updated);
     localStorage.setItem('mhdec_group_cards', JSON.stringify(updated));
+
+    // Sync to Cloudflare server API so Mobile and PC share cards in real-time
+    try {
+      await fetch('/api/files', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cards: updated }),
+      });
+    } catch (err) {
+      console.warn('Could not sync cards to API:', err);
+    }
   };
 
   // Upload Batch Handler
