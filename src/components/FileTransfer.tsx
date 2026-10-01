@@ -32,11 +32,14 @@ function formatBytes(bytes: number, decimals = 1) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-function dataURLtoBlob(dataurl: string): Blob {
+function dataURLtoBlob(dataurl: string, forceOctetStream = false): Blob {
   try {
     const arr = dataurl.split(',');
     const mimeMatch = arr[0].match(/:(.*?);/);
-    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    let mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    if (forceOctetStream) {
+      mime = 'application/octet-stream';
+    }
     const bstr = atob(arr[1]);
     let n = bstr.length;
     const u8arr = new Uint8Array(n);
@@ -274,20 +277,20 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
     let createdBlobUrl = false;
 
     if (rawUrl.startsWith('data:')) {
-      const blob = dataURLtoBlob(rawUrl);
+      // Force application/octet-stream on iOS so Safari triggers native download prompt instead of inline viewer
+      const blob = dataURLtoBlob(rawUrl, isIOS);
       downloadUrl = URL.createObjectURL(blob);
       createdBlobUrl = true;
     }
 
     if (isIOS) {
-      setDownloadToast(`📥 파일 다운로드 시도 중... ('파일' 앱 또는 새 탭 확인)`);
+      setDownloadToast(`📥 파일 다운로드 시도 중 ('파일' 앱 ➜ '다운로드' 폴더 확인)`);
       setTimeout(() => setDownloadToast(null), 4000);
 
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = file.name;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
+      // Do NOT set target='_blank' on iOS; target='_blank' forces Safari to open PDFs inline instead of downloading
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
