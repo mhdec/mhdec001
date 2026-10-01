@@ -161,15 +161,29 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
 
     // Sync to Cloudflare server API so Mobile and PC share cards in real-time
     try {
-      await fetch(`/api/files?_t=${Date.now()}`, {
+      const payload = JSON.stringify({
+        cards: updated,
+        deletedCardIds,
+        replace: true,
+      });
+
+      // Check overall payload size limit (Cloudflare KV 25MB limit safeguard)
+      if (payload.length > 20 * 1024 * 1024) {
+        setErrorMessage(
+          '⚠️ 전체 파일 저장 용량이 20MB를 초과하여 서버 동기화에 실패했습니다. 일부 카드를 삭제해 주세요.'
+        );
+        return;
+      }
+
+      const res = await fetch(`/api/files?_t=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cards: updated,
-          deletedCardIds,
-          replace: true,
-        }),
+        body: payload,
       });
+
+      if (!res.ok) {
+        setErrorMessage('⚠️ 서버 파일 저장 용량을 초과하여 저장하지 못했습니다.');
+      }
     } catch (err) {
       console.warn('Could not sync cards to API:', err);
     }
@@ -182,6 +196,18 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
 
     if (selectedFiles.length > 20) {
       setErrorMessage('한 번에 올릴 수 있는 최대 파일 개수는 20개입니다.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+    const oversizedFiles = Array.from(selectedFiles).filter((f) => f.size > MAX_FILE_SIZE);
+    if (oversizedFiles.length > 0) {
+      const targetName = oversizedFiles[0].name;
+      const targetSize = formatBytes(oversizedFiles[0].size);
+      setErrorMessage(
+        `⚠️ '${targetName}' (${targetSize}) 파일이 15MB 용량 제한을 초과합니다. 15MB 이하의 파일만 업로드할 수 있습니다.`
+      );
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
