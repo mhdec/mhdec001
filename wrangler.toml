@@ -1,0 +1,11 @@
+name = "mhdec001"
+pages_build_output_dir = "./dist"
+compatibility_date = "2024-09-25"
+
+[[r2_buckets]]
+binding = "FILE_BUCKET"
+bucket_name = "mhdec-file-share"
+
+[[kv_namespaces]]
+binding = "MEMO_KV"
+id = "mhdec-memo-kv"

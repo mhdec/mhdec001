@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-canvas: #faf9f5;
+    --color-coral: #cc785c;
+    --color-coral-active: #a9583e;
+    --color-ink: #141413;
+    --color-muted: #6c6a64;
+    --color-hairline: #e6dfd8;
+    --surface-card: #efe9de;
+    --surface-dark: #181715;
+  }
+
+  body {
+    background-color: var(--bg-canvas);
+    color: var(--color-ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3, .font-serif-display {
+    font-family: 'Cormorant Garamond', Garamond, 'Times New Roman', serif;
+  }
+}
+
+/* Custom scrollbar & Utility styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #faf9f5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e6dfd8;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #cc785c;
+}
+
+/* Touch select prevention for Japanese flashcard long-press */
+.no-select {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
