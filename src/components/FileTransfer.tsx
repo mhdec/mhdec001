@@ -234,13 +234,32 @@ export const FileTransfer: React.FC = () => {
     }
   };
 
+  const [downloadToast, setDownloadToast] = useState<string | null>(null);
+
   const triggerDownloadFile = (file: FileItem) => {
-    const link = document.createElement('a');
-    link.href = file.url || file.dataUrl || '#';
-    link.download = file.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const targetUrl = file.url || file.dataUrl || '#';
+
+    if (isIOS) {
+      // iOS Safari Download & View Helper
+      setDownloadToast(`📥 파일 다운로드됨 ('파일' 앱 ➜ '다운로드' 폴더 확인)`);
+      setTimeout(() => setDownloadToast(null), 4000);
+
+      const link = document.createElement('a');
+      link.href = targetUrl;
+      link.download = file.name;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      const link = document.createElement('a');
+      link.href = targetUrl;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   // Download All Files in Active Modal
@@ -312,6 +331,14 @@ export const FileTransfer: React.FC = () => {
           style={{ height: `${pullDistance}px`, opacity: pullDistance / 60 }}
         >
           {pullDistance > 60 ? '손을 떼면 새로고침됩니다' : '아래로 당겨서 새로고침'}
+        </div>
+      )}
+
+      {/* iOS Download Toast Notification Banner */}
+      {downloadToast && (
+        <div className="p-3 bg-[#141413] text-white rounded-xl text-[12px] font-semibold flex items-center justify-between shadow-md animate-fade-in">
+          <span>{downloadToast}</span>
+          <span className="text-[10px] text-[#cc785c]">iOS 파일 저장</span>
         </div>
       )}
       {/* Upload Zone & Form Card */}
