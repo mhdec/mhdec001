@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { FileItem, FileGroupCard } from '../types';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
+import { loadCardsFromDB, saveCardsToDB } from '../utils/cardStorage';
 
 const EXPIRATION_HOURS = 48;
 const EXPIRATION_MS = EXPIRATION_HOURS * 60 * 60 * 1000;
@@ -71,39 +72,34 @@ export const FileTransfer: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch Cards (Cloudflare API or LocalStorage fallback)
+  // Fetch Cards (Cloudflare API or IndexedDB fallback)
   const loadCards = useCallback(async () => {
     try {
       const res = await fetch('/api/files');
       if (res.ok) {
         const data: any = await res.json();
         const loaded: FileGroupCard[] = data.cards || [];
-        // Filter 48h expired cards
-        const valid = loaded.filter((card) => {
-          const age = Date.now() - new Date(card.uploadedAt).getTime();
-          return age < EXPIRATION_MS;
-        });
-        setCards(valid);
-        return;
+        if (loaded.length > 0) {
+          const valid = loaded.filter((card) => {
+            const age = Date.now() - new Date(card.uploadedAt).getTime();
+            return age < EXPIRATION_MS;
+          });
+          setCards(valid);
+          await saveCardsToDB(valid);
+          return;
+        }
       }
     } catch (err) {
-      console.warn('Using LocalStorage fallback for Cards');
+      console.warn('Using IndexedDB fallback for Cards');
     }
 
-    const localData = localStorage.getItem('mhdec_group_cards');
-    if (localData) {
-      try {
-        const parsed: FileGroupCard[] = JSON.parse(localData);
-        const valid = parsed.filter((card) => {
-          const age = Date.now() - new Date(card.uploadedAt).getTime();
-          return age < EXPIRATION_MS;
-        });
-        setCards(valid);
-        localStorage.setItem('mhdec_group_cards', JSON.stringify(valid));
-      } catch (e) {
-        setCards([]);
-      }
-    }
+    const localCards = await loadCardsFromDB();
+    const valid = localCards.filter((card) => {
+      const age = Date.now() - new Date(card.uploadedAt).getTime();
+      return age < EXPIRATION_MS;
+    });
+    setCards(valid);
+    await saveCardsToDB(valid);
   }, []);
 
   const { containerRef, pullDistance } = usePullToRefresh(loadCards);
@@ -114,7 +110,7 @@ export const FileTransfer: React.FC = () => {
 
   const saveCardsToStorage = async (updated: FileGroupCard[]) => {
     setCards(updated);
-    localStorage.setItem('mhdec_group_cards', JSON.stringify(updated));
+    await saveCardsToDB(updated);
 
     // Sync to Cloudflare server API so Mobile and PC share cards in real-time
     try {
