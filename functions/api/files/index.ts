@@ -46,7 +46,24 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const cards = body.cards || [];
 
     const now = Date.now();
-    const validCards = cards.filter((card: any) => {
+    let existingCards: any[] = [];
+    if (context.env.MEMO_KV) {
+      const data = await context.env.MEMO_KV.get('shared_file_cards', 'json');
+      if (Array.isArray(data)) {
+        existingCards = data;
+      }
+    }
+
+    const cardMap = new Map();
+    for (const card of existingCards) {
+      if (card && card.id) cardMap.set(card.id, card);
+    }
+    for (const card of cards) {
+      if (card && card.id) cardMap.set(card.id, card);
+    }
+
+    const mergedCards = Array.from(cardMap.values());
+    const validCards = mergedCards.filter((card: any) => {
       const age = now - new Date(card.uploadedAt).getTime();
       return age < EXPIRATION_MS;
     });

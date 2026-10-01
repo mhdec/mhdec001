@@ -32,6 +32,24 @@ function formatBytes(bytes: number, decimals = 1) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+function dataURLtoBlob(dataurl: string): Blob {
+  try {
+    const arr = dataurl.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  } catch (e) {
+    console.error('Failed to convert base64 dataURL to Blob:', e);
+    return new Blob([], { type: 'application/octet-stream' });
+  }
+}
+
 // Live 48h Countdown Timer String Generator
 function getCountdownString(uploadedAt: string, now: number) {
   const uploadTime = new Date(uploadedAt).getTime();
@@ -77,32 +95,39 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch Cards (Cloudflare API or IndexedDB fallback)
+  // Fetch Cards (Cloudflare API & IndexedDB sync)
   const loadCards = useCallback(async () => {
+    let serverCards: FileGroupCard[] = [];
     try {
       const res = await fetch('/api/files');
       if (res.ok) {
         const data: any = await res.json();
-        const loaded: FileGroupCard[] = data.cards || [];
-        if (loaded.length > 0) {
-          const valid = loaded.filter((card) => {
-            const age = Date.now() - new Date(card.uploadedAt).getTime();
-            return age < EXPIRATION_MS;
-          });
-          setCards(valid);
-          await saveCardsToDB(valid);
-          return;
-        }
+        serverCards = data.cards || [];
       }
     } catch (err) {
       console.warn('Using IndexedDB fallback for Cards');
     }
 
     const localCards = await loadCardsFromDB();
-    const valid = localCards.filter((card) => {
+    const cardMap = new Map<string, FileGroupCard>();
+
+    localCards.forEach((c) => {
+      if (c && c.id) cardMap.set(c.id, c);
+    });
+    serverCards.forEach((c) => {
+      if (c && c.id) cardMap.set(c.id, c);
+    });
+
+    const merged = Array.from(cardMap.values());
+    const valid = merged.filter((card) => {
       const age = Date.now() - new Date(card.uploadedAt).getTime();
       return age < EXPIRATION_MS;
     });
+
+    valid.sort(
+      (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+    );
+
     setCards(valid);
     await saveCardsToDB(valid);
   }, []);
@@ -240,28 +265,47 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
 
   const triggerDownloadFile = (file: FileItem) => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const targetUrl = file.url || file.dataUrl || '#';
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    const rawUrl = file.url || file.dataUrl || '#';
+    let downloadUrl = rawUrl;
+    let createdBlobUrl = false;
+
+    if (rawUrl.startsWith('data:')) {
+      const blob = dataURLtoBlob(rawUrl);
+      downloadUrl = URL.createObjectURL(blob);
+      createdBlobUrl = true;
+    }
 
     if (isIOS) {
-      // iOS Safari Download & View Helper
-      setDownloadToast(`📥 파일 다운로드됨 ('파일' 앱 ➜ '다운로드' 폴더 확인)`);
+      setDownloadToast(`📥 파일 다운로드 시도 중... ('파일' 앱 또는 새 탭 확인)`);
       setTimeout(() => setDownloadToast(null), 4000);
 
       const link = document.createElement('a');
-      link.href = targetUrl;
+      link.href = downloadUrl;
       link.download = file.name;
       link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      if (createdBlobUrl) {
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 60000);
+      }
     } else {
       const link = document.createElement('a');
-      link.href = targetUrl;
+      link.href = downloadUrl;
       link.download = file.name;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      if (createdBlobUrl) {
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
+      }
     }
   };
 
