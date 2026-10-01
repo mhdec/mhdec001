@@ -319,46 +319,45 @@ export const MemoAndJapanese: React.FC<MemoAndJapaneseProps> = ({ thinkTab }) =>
 
           {/* Add/Edit Modal */}
           {isEditing && (
-            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="w-full max-w-md bg-[#faf9f5] border border-[#e6dfd8] rounded-2xl p-4 shadow-xl space-y-3">
-                <div className="flex items-center justify-between border-b border-[#e6dfd8] pb-2">
-                  <h3 className="text-[15px] font-bold text-[#141413]">
-                    {currentMemoId ? '메모 수정' : '새 메모 작성'}
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+              <div className="w-full max-w-lg h-[85vh] bg-[#faf9f5] border border-[#e6dfd8] rounded-3xl p-5 shadow-2xl flex flex-col space-y-3">
+                <div className="shrink-0 flex items-center justify-between border-b border-[#e6dfd8] pb-3">
+                  <h3 className="text-[17px] font-bold text-[#141413]">
+                    {currentMemoId ? '📝 메모 수정' : '📝 새 메모 작성'}
                   </h3>
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="p-1 rounded-lg hover:bg-[#efe9de] text-[#6c6a64]"
+                    className="p-1 rounded-lg hover:bg-[#efe9de] text-[#6c6a64] transition-colors cursor-pointer"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-6 h-6" />
                   </button>
                 </div>
 
                 <input
                   type="text"
-                  placeholder="제목 입력"
+                  placeholder="제목 입력 (예: 오늘 할 일)"
                   value={titleInput}
                   onChange={(e) => setTitleInput(e.target.value)}
-                  className="w-full px-3 py-2 text-[14px] bg-white border border-[#e6dfd8] rounded-xl focus:outline-none focus:border-[#cc785c]"
+                  className="shrink-0 w-full px-3.5 py-2.5 text-[15px] font-bold bg-white border border-[#e6dfd8] rounded-xl focus:outline-none focus:border-[#cc785c]"
                 />
 
                 <textarea
-                  placeholder="메모 내용을 입력하세요..."
+                  placeholder="메모 내용을 자유롭게 입력하세요..."
                   value={contentInput}
                   onChange={(e) => setContentInput(e.target.value)}
-                  rows={6}
-                  className="w-full px-3 py-2 text-[14px] bg-white border border-[#e6dfd8] rounded-xl focus:outline-none focus:border-[#cc785c] resize-none"
+                  className="flex-1 w-full p-3.5 text-[14px] bg-white border border-[#e6dfd8] rounded-xl focus:outline-none focus:border-[#cc785c] resize-none leading-relaxed overflow-y-auto"
                 />
 
-                <div className="flex justify-end gap-2 pt-1">
+                <div className="shrink-0 flex justify-end gap-2.5 pt-2 border-t border-[#e6dfd8]">
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="px-4 py-2 text-[13px] font-semibold text-[#6c6a64] hover:bg-[#efe9de] rounded-xl border border-[#e6dfd8]"
+                    className="px-4 py-2.5 text-[13px] font-semibold text-[#6c6a64] hover:bg-[#efe9de] rounded-xl border border-[#e6dfd8] transition-colors cursor-pointer"
                   >
                     취소
                   </button>
                   <button
                     onClick={handleSaveMemo}
-                    className="px-4 py-2 text-[13px] font-semibold bg-[#cc785c] text-white hover:bg-[#a9583e] rounded-xl shadow-xs"
+                    className="px-5 py-2.5 text-[13px] font-bold bg-[#cc785c] text-white hover:bg-[#a9583e] rounded-xl shadow-xs transition-all cursor-pointer active:scale-95"
                   >
                     저장하기
                   </button>
