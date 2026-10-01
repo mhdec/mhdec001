@@ -167,14 +167,6 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
         replace: true,
       });
 
-      // Check overall payload size limit (Cloudflare KV 25MB limit safeguard)
-      if (payload.length > 20 * 1024 * 1024) {
-        setErrorMessage(
-          '⚠️ 전체 파일 저장 용량이 20MB를 초과하여 서버 동기화에 실패했습니다. 일부 카드를 삭제해 주세요.'
-        );
-        return;
-      }
-
       const res = await fetch(`/api/files?_t=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,7 +174,7 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
       });
 
       if (!res.ok) {
-        setErrorMessage('⚠️ 서버 파일 저장 용량을 초과하여 저장하지 못했습니다.');
+        setErrorMessage('⚠️ 서버 저장 용량을 초과하여 저장하지 못했습니다.');
       }
     } catch (err) {
       console.warn('Could not sync cards to API:', err);
