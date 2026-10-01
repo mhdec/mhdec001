@@ -5,6 +5,21 @@ interface Env {
 
 const EXPIRATION_MS = 48 * 60 * 60 * 1000; // 48 Hours
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, DELETE',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+  'Content-Type': 'application/json',
+};
+
+export const onRequestOptions: PagesFunction<Env> = async () => {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders,
+  });
+};
+
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
     let cards: any[] = [];
@@ -30,12 +45,12 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     }
 
     return new Response(JSON.stringify({ cards: validCards }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   } catch (err: any) {
     return new Response(JSON.stringify({ cards: [], error: err.message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   }
 };
@@ -86,12 +101,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     }
 
     return new Response(JSON.stringify({ success: true, cards: validCards }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   }
 };

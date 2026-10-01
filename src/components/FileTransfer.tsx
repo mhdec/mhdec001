@@ -99,9 +99,9 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
   }, []);
 
   // Fetch Cards (Cloudflare API & IndexedDB sync)
-  const loadCards = useCallback(async () => {
+  const loadCards = useCallback(async (isManualRefresh = false) => {
     try {
-      const res = await fetch('/api/files');
+      const res = await fetch(`/api/files?_t=${Date.now()}`);
       if (res.ok) {
         const data: any = await res.json();
         const serverCards: FileGroupCard[] = data.cards || [];
@@ -114,6 +114,11 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
         );
         setCards(valid);
         await saveCardsToDB(valid);
+
+        if (isManualRefresh) {
+          setDownloadToast(`🔄 새로고침 완료! (총 ${valid.length}개 카드)`);
+          setTimeout(() => setDownloadToast(null), 3000);
+        }
         return;
       }
     } catch (err) {
@@ -127,16 +132,25 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
     });
     setCards(valid);
     await saveCardsToDB(valid);
+
+    if (isManualRefresh) {
+      setDownloadToast(`🔄 새로고침 완료! (총 ${valid.length}개 카드)`);
+      setTimeout(() => setDownloadToast(null), 3000);
+    }
   }, []);
 
-  const { containerRef, pullDistance } = usePullToRefresh(loadCards);
+  const handleManualRefresh = useCallback(() => {
+    loadCards(true);
+  }, [loadCards]);
+
+  const { containerRef, pullDistance } = usePullToRefresh(handleManualRefresh);
 
   useEffect(() => {
     loadCards();
     if (onRegisterRefresh) {
-      onRegisterRefresh(loadCards);
+      onRegisterRefresh(handleManualRefresh);
     }
-  }, [loadCards, onRegisterRefresh]);
+  }, [loadCards, handleManualRefresh, onRegisterRefresh]);
 
   const saveCardsToStorage = async (
     updated: FileGroupCard[],
@@ -147,7 +161,7 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
 
     // Sync to Cloudflare server API so Mobile and PC share cards in real-time
     try {
-      await fetch('/api/files', {
+      await fetch(`/api/files?_t=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
