@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Header } from './components/Header';
 import { Home } from './components/Home';
 import { BobMukJa } from './components/BobMukJa';
@@ -9,15 +9,38 @@ import { FileTransfer } from './components/FileTransfer';
 import { MemoAndJapanese } from './components/MemoAndJapanese';
 import { PageType, ThinkTab } from './types';
 
+const VALID_PAGES: PageType[] = ['home', 'bob', 'news', 'site', 'lotto', 'transfer', 'memo'];
+
+function getInitialPage(): PageType {
+  const hash = window.location.hash.replace('#', '') as PageType;
+  if (VALID_PAGES.includes(hash)) return hash;
+
+  const stored = sessionStorage.getItem('mhdec_active_page') as PageType;
+  if (VALID_PAGES.includes(stored)) return stored;
+
+  return 'home';
+}
+
 export function App() {
-  const [currentPage, setCurrentPage] = useState<PageType>('home');
+  const [currentPage, setCurrentPage] = useState<PageType>(getInitialPage);
   const [thinkTab, setThinkTab] = useState<ThinkTab>('memo');
   const lottoRefreshRef = useRef<(() => void) | null>(null);
 
   const handleNavigate = (page: PageType) => {
     setCurrentPage(page);
+    window.location.hash = page;
+    sessionStorage.setItem('mhdec_active_page', page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const page = getInitialPage();
+      setCurrentPage(page);
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   const handleRegisterLottoRefresh = useCallback((fn: () => void) => {
     lottoRefreshRef.current = fn;

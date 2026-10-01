@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Trash2, Edit2, Check, X, RefreshCw, Eye, EyeOff, Award, HelpCircle } from 'lucide-react';
 import { MemoItem, ThinkTab, JapaneseMode, JapaneseChar } from '../types';
 import { HIRAGANA_DATA, KATAKANA_DATA } from '../data/japaneseData';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 interface MemoAndJapaneseProps {
   thinkTab: ThinkTab;
@@ -224,11 +225,7 @@ export const MemoAndJapanese: React.FC<MemoAndJapaneseProps> = ({ thinkTab }) =>
     }
   };
 
-  // Touch Pull-to-refresh state
-  const [pullDistance, setPullDistance] = useState<number>(0);
-  const touchStartY = useRef<number>(0);
-
-  const handleRefreshThinkPage = () => {
+  const handleRefreshThinkPage = useCallback(() => {
     if (thinkTab === 'memo') {
       loadMemos();
     } else {
@@ -238,39 +235,13 @@ export const MemoAndJapanese: React.FC<MemoAndJapaneseProps> = ({ thinkTab }) =>
         generateQuiz(studySubTab === 'quiz_char' ? 'char' : 'kana');
       }
     }
-  };
+  }, [thinkTab, studySubTab, handleNextChar, generateQuiz, loadMemos]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (window.scrollY === 0) {
-      touchStartY.current = e.touches[0].clientY;
-    } else {
-      touchStartY.current = 0;
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartY.current > 0 && window.scrollY === 0) {
-      const currentY = e.touches[0].clientY;
-      const dist = currentY - touchStartY.current;
-      if (dist > 0) {
-        setPullDistance(Math.min(dist, 100));
-      }
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (pullDistance > 60) {
-      handleRefreshThinkPage();
-    }
-    setPullDistance(0);
-    touchStartY.current = 0;
-  };
+  const { containerRef, pullDistance } = usePullToRefresh(handleRefreshThinkPage);
 
   return (
     <div
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      ref={containerRef}
       className="w-full max-w-lg mx-auto px-4 py-4 space-y-4 min-h-[calc(100vh-60px)] overscroll-contain"
     >
       {/* Pull down indicator for mobile */}

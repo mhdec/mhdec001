@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { RefreshCw, Copy, Check, Quote as QuoteIcon } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Copy, Check, Quote as QuoteIcon } from 'lucide-react';
 import { LIFE_QUOTES } from '../data/quotes';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 function generateLottoSet(): number[] {
   const numbers = new Set<number>();
@@ -28,14 +29,7 @@ export const LottoQuote: React.FC<LottoQuoteProps> = ({ onRegisterRefresh }) => 
   const [lottoSets, setLottoSets] = useState<number[][]>([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
-  // Touch Pull-to-refresh state
-  const [pullDistance, setPullDistance] = useState<number>(0);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const touchStartY = useRef<number>(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const refreshAll = () => {
-    setIsRefreshing(true);
+  const refreshAll = useCallback(() => {
     // Random quote selection
     const randomQuote = LIFE_QUOTES[Math.floor(Math.random() * LIFE_QUOTES.length)];
     setQuote(randomQuote);
@@ -43,18 +37,16 @@ export const LottoQuote: React.FC<LottoQuoteProps> = ({ onRegisterRefresh }) => 
     // 5 sets of Lotto numbers
     const newSets = Array.from({ length: 5 }, () => generateLottoSet());
     setLottoSets(newSets);
+  }, []);
 
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 300);
-  };
+  const { containerRef, pullDistance } = usePullToRefresh(refreshAll);
 
   useEffect(() => {
     refreshAll();
     if (onRegisterRefresh) {
       onRegisterRefresh(refreshAll);
     }
-  }, [onRegisterRefresh]);
+  }, [onRegisterRefresh, refreshAll]);
 
   const handleCopySet = (set: number[], index: number) => {
     const text = `[로또 추천 번호 ${String.fromCharCode(65 + index)}행] ${set.join(', ')}`;
@@ -63,39 +55,9 @@ export const LottoQuote: React.FC<LottoQuoteProps> = ({ onRegisterRefresh }) => 
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
-  // Touch Pull-to-refresh logic
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (window.scrollY === 0) {
-      touchStartY.current = e.touches[0].clientY;
-    } else {
-      touchStartY.current = 0;
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartY.current > 0 && window.scrollY === 0) {
-      const currentY = e.touches[0].clientY;
-      const dist = currentY - touchStartY.current;
-      if (dist > 0) {
-        setPullDistance(Math.min(dist, 100));
-      }
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (pullDistance > 60) {
-      refreshAll();
-    }
-    setPullDistance(0);
-    touchStartY.current = 0;
-  };
-
   return (
     <div
       ref={containerRef}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
       className="w-full max-w-lg mx-auto px-4 py-4 space-y-5 relative min-h-[calc(100vh-60px)] overscroll-contain"
     >
       {/* Pull down indicator for mobile */}
