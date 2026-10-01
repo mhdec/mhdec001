@@ -44,26 +44,39 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     const body: any = await context.request.json();
     const cards = body.cards || [];
+    const deletedCardIds: string[] = body.deletedCardIds || [];
+    const replace: boolean = body.replace !== false;
 
     const now = Date.now();
-    let existingCards: any[] = [];
-    if (context.env.MEMO_KV) {
-      const data = await context.env.MEMO_KV.get('shared_file_cards', 'json');
-      if (Array.isArray(data)) {
-        existingCards = data;
+    let finalCards: any[] = [];
+
+    if (replace) {
+      finalCards = cards;
+    } else {
+      let existingCards: any[] = [];
+      if (context.env.MEMO_KV) {
+        const data = await context.env.MEMO_KV.get('shared_file_cards', 'json');
+        if (Array.isArray(data)) {
+          existingCards = data;
+        }
       }
+
+      const deletedSet = new Set(deletedCardIds);
+      const filteredExisting = existingCards.filter(
+        (c) => c && c.id && !deletedSet.has(c.id)
+      );
+
+      const cardMap = new Map();
+      for (const card of filteredExisting) {
+        cardMap.set(card.id, card);
+      }
+      for (const card of cards) {
+        if (card && card.id) cardMap.set(card.id, card);
+      }
+      finalCards = Array.from(cardMap.values());
     }
 
-    const cardMap = new Map();
-    for (const card of existingCards) {
-      if (card && card.id) cardMap.set(card.id, card);
-    }
-    for (const card of cards) {
-      if (card && card.id) cardMap.set(card.id, card);
-    }
-
-    const mergedCards = Array.from(cardMap.values());
-    const validCards = mergedCards.filter((card: any) => {
+    const validCards = finalCards.filter((card: any) => {
       const age = now - new Date(card.uploadedAt).getTime();
       return age < EXPIRATION_MS;
     });

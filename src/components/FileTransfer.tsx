@@ -100,37 +100,31 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
 
   // Fetch Cards (Cloudflare API & IndexedDB sync)
   const loadCards = useCallback(async () => {
-    let serverCards: FileGroupCard[] = [];
     try {
       const res = await fetch('/api/files');
       if (res.ok) {
         const data: any = await res.json();
-        serverCards = data.cards || [];
+        const serverCards: FileGroupCard[] = data.cards || [];
+        const valid = serverCards.filter((card) => {
+          const age = Date.now() - new Date(card.uploadedAt).getTime();
+          return age < EXPIRATION_MS;
+        });
+        valid.sort(
+          (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+        );
+        setCards(valid);
+        await saveCardsToDB(valid);
+        return;
       }
     } catch (err) {
       console.warn('Using IndexedDB fallback for Cards');
     }
 
     const localCards = await loadCardsFromDB();
-    const cardMap = new Map<string, FileGroupCard>();
-
-    localCards.forEach((c) => {
-      if (c && c.id) cardMap.set(c.id, c);
-    });
-    serverCards.forEach((c) => {
-      if (c && c.id) cardMap.set(c.id, c);
-    });
-
-    const merged = Array.from(cardMap.values());
-    const valid = merged.filter((card) => {
+    const valid = localCards.filter((card) => {
       const age = Date.now() - new Date(card.uploadedAt).getTime();
       return age < EXPIRATION_MS;
     });
-
-    valid.sort(
-      (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
-    );
-
     setCards(valid);
     await saveCardsToDB(valid);
   }, []);
@@ -144,7 +138,10 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
     }
   }, [loadCards, onRegisterRefresh]);
 
-  const saveCardsToStorage = async (updated: FileGroupCard[]) => {
+  const saveCardsToStorage = async (
+    updated: FileGroupCard[],
+    deletedCardIds: string[] = []
+  ) => {
     setCards(updated);
     await saveCardsToDB(updated);
 
@@ -153,7 +150,11 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
       await fetch('/api/files', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cards: updated }),
+        body: JSON.stringify({
+          cards: updated,
+          deletedCardIds,
+          replace: true,
+        }),
       });
     } catch (err) {
       console.warn('Could not sync cards to API:', err);
@@ -234,7 +235,7 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
   const handleDeleteSelectedCards = () => {
     if (selectedCardIds.length === 0) return;
     const remaining = cards.filter((c) => !selectedCardIds.includes(c.id));
-    saveCardsToStorage(remaining);
+    saveCardsToStorage(remaining, selectedCardIds);
     setSelectedCardIds([]);
   };
 
@@ -346,7 +347,7 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
     if (remainingFiles.length === 0) {
       // If no files remain, delete the card itself
       const updatedCards = cards.filter((c) => c.id !== activeModalCard.id);
-      saveCardsToStorage(updatedCards);
+      saveCardsToStorage(updatedCards, [activeModalCard.id]);
       handleCloseCardModal();
     } else {
       const updatedCard = { ...activeModalCard, files: remainingFiles };
