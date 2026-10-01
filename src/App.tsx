@@ -25,6 +25,7 @@ export function App() {
   const [currentPage, setCurrentPage] = useState<PageType>(getInitialPage);
   const [thinkTab, setThinkTab] = useState<ThinkTab>('memo');
   const lottoRefreshRef = useRef<(() => void) | null>(null);
+  const transferRefreshRef = useRef<(() => void) | null>(null);
 
   const handleNavigate = (page: PageType) => {
     setCurrentPage(page);
@@ -52,6 +53,16 @@ export function App() {
     }
   };
 
+  const handleRegisterTransferRefresh = useCallback((fn: () => void) => {
+    transferRefreshRef.current = fn;
+  }, []);
+
+  const handleTriggerTransferRefresh = () => {
+    if (transferRefreshRef.current) {
+      transferRefreshRef.current();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#faf9f5] text-[#141413] flex flex-col font-sans selection:bg-[#cc785c] selection:text-white">
       {/* 50px Max Height Header with Floating Home Button & Controls */}
@@ -61,6 +72,7 @@ export function App() {
         thinkTab={thinkTab}
         onThinkTabChange={setThinkTab}
         onLottoRefresh={handleTriggerLottoRefresh}
+        onTransferRefresh={handleTriggerTransferRefresh}
       />
 
       {/* Main Page View Area */}
@@ -72,7 +84,9 @@ export function App() {
         {currentPage === 'lotto' && (
           <LottoQuote onRegisterRefresh={handleRegisterLottoRefresh} />
         )}
-        {currentPage === 'transfer' && <FileTransfer />}
+        {currentPage === 'transfer' && (
+          <FileTransfer onRegisterRefresh={handleRegisterTransferRefresh} />
+        )}
         {currentPage === 'memo' && <MemoAndJapanese thinkTab={thinkTab} />}
       </main>
 

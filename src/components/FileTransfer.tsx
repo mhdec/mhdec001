@@ -18,6 +18,7 @@ import {
 import { FileItem, FileGroupCard } from '../types';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { loadCardsFromDB, saveCardsToDB } from '../utils/cardStorage';
+import { compressImageIfNeeded } from '../utils/imageCompressor';
 
 const EXPIRATION_HOURS = 48;
 const EXPIRATION_MS = EXPIRATION_HOURS * 60 * 60 * 1000;
@@ -44,7 +45,11 @@ function getCountdownString(uploadedAt: string, now: number) {
   return `${hours}시간 ${minutes}분 ${seconds}초 남음`;
 }
 
-export const FileTransfer: React.FC = () => {
+interface FileTransferProps {
+  onRegisterRefresh?: (fn: () => void) => void;
+}
+
+export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh }) => {
   const [cards, setCards] = useState<FileGroupCard[]>([]);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   
@@ -106,7 +111,10 @@ export const FileTransfer: React.FC = () => {
 
   useEffect(() => {
     loadCards();
-  }, [loadCards]);
+    if (onRegisterRefresh) {
+      onRegisterRefresh(loadCards);
+    }
+  }, [loadCards, onRegisterRefresh]);
 
   const saveCardsToStorage = async (updated: FileGroupCard[]) => {
     setCards(updated);
@@ -142,12 +150,7 @@ export const FileTransfer: React.FC = () => {
 
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
-      const reader = new FileReader();
-
-      const dataUrl = await new Promise<string>((resolve) => {
-        reader.onload = (event) => resolve(event.target?.result as string);
-        reader.readAsDataURL(file);
-      });
+      const dataUrl = await compressImageIfNeeded(file);
 
       const fileItem: FileItem = {
         id: `${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${i}`,
