@@ -1,0 +1,192 @@
+================================================================================
+[일괄 개발 프롬프트] '마 므하노!' Web App 전체 기능 통합 개발 및 자가 검증 프롬프트
+================================================================================
+
+당신은 최고 수준의 Full-Stack Web App Developer이자 Quality Assurance (QA) 엔지니어입니다.
+다음 프로젝트 명세와 구조, 기능 요구사항, 그리고 [디자인 시스템]을 바탕으로 '마 므하노!' Web App 전체 코드베이스를 일괄 구현(Full Implementation)하고, 스스로 빌드, 타입 체크, 자가 검증(Self-Verification) 및 테스트를 완료해 주세요.
+
+---
+
+================================================================================
+SECTION 1. 디자인 시스템 및 스타일 가이드 (DESIGN SYSTEM & STYLES)
+--------------------------------------------------------------------------------
+※ [중요] 추후 다른 Design.md를 적용하고 싶을 경우, 아래의 
+   <!-- BEGIN DESIGN_SYSTEM_SPECIFICATION --> 에서 
+   <!-- END DESIGN_SYSTEM_SPECIFICATION --> 까지의 영역만 
+   새로운 Design.md 내용으로 교체하여 프롬프트를 재사용하십시오.
+================================================================================
+
+<!-- BEGIN DESIGN_SYSTEM_SPECIFICATION -->
+
+### 1.1 톤앤매너 & 디자인 테마 (Warm Beige / Anthropic-Claude Style)
+- **전체 컨셉**: 세련되고 따뜻한 느낌의 Warm Beige 톤앤매너
+- **주요 색상 팔레트 (Color Palette)**:
+  - 배경색 (Background): `#faf9f5`
+  - 카카오/섹션 카드 배경 (Surface/Card): `#efe9de`
+  - 테두리 및 구분선 (Border/Divider): `#e6dfd8`
+  - 서브 카카오/카드 보버 (Card Hover): `#e2d9cd`
+  - 주 포인트/액센트 버튼 (Primary/Accent): `#cc785c` (Warm Rust / Orange-Brown)
+  - 보조 포인트/버튼 (Secondary Button): `#d98b72` / `#b8674d`
+  - 기본 텍스트 (Primary Text): `#141413`
+  - 서브 텍스트 (Secondary Text): `#6c6a64`
+  - 경고/삭제/에러 (Danger/Error): `#c64545`
+  - 성공/완료 (Success): `#388e3c`
+
+### 1.2 레이아웃 & 뷰포트 제약 조건 (Layout Constraints)
+- **상단 헤더**: 높이 50px 고정 헤더 (`Header.tsx`), z-index: 50, fixed/sticky 상단 고정.
+- **메인 컨테이너**: 상단 50px 헤더 공간을 고려한 `pt-[50px]`, 최대 너비 `max-w-4xl` 또는 `max-w-6xl` 중앙 정렬, 하단 패딩 확보.
+- **[핵심 필수 제약] 푸터 절대 금지 (NO FOOTER RULE)**:
+  - 어떠한 페이지 및 컴포넌트에도 하단 푸터(Footer) 영역을 생성하거나 노출하지 말 것.
+  - 모든 콘텐츠는 뷰포트 내 스크롤 영역 안에서 깔끔하게 종결되어야 함.
+
+### 1.3 반응형 및 컴포넌트 UI/UX 스타일
+- **모바일 퍼스트 (Mobile First)**: 모바일 터치 브라우저 및 PC 환경 모두에서 매끄럽게 작동.
+- **모서리 라운딩**: 카드/버튼 `rounded-xl` 또는 `rounded-2xl` 기본 적용.
+- **그림자 (Shadow)**: 과도하지 않은 은은한 `shadow-sm` 또는 `shadow-md`.
+- **애니메이션 & 트랜지션**: `transition-all duration-200 ease-in-out` 적용.
+
+<!-- END DESIGN_SYSTEM_SPECIFICATION -->
+
+---
+
+================================================================================
+SECTION 2. 프로젝트 구조 및 데이터 사양 (ARCHITECTURE & SCHEMAS)
+================================================================================
+
+### 2.1 파일/폴더 아키텍처
+```
+/
+├── index.html
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+├── functions/               # Cloudflare Pages Functions
+│   └── api/
+│       └── transfer.ts      # Cloudflare KV 연동 API
+└── src/
+    ├── main.tsx
+    ├── App.tsx
+    ├── index.css
+    ├── types.ts             # 데이터 타입 및 인터페이스 모음
+    ├── components/
+    │   ├── Header.tsx       # 50px 고정 헤더 및 네비게이션 탭
+    │   ├── Home.tsx         # 대시보드 / 메인 대문 페이지
+    │   ├── Bob.tsx          # '오늘 뭐 먹지?' 식사 추천 컴포넌트
+    │   ├── News.tsx         # 실시간 뉴스/브리핑 컴포넌트
+    │   ├── Site.tsx         # 바로가기 링크/사이트 모음
+    │   ├── Lotto.tsx        # 로또 번호 생성기 및 당첨 조회
+    │   ├── FileTransfer.tsx # '옮겨볼까?' 파일 전송 메인 컴포넌트
+    │   └── Memo.tsx         # 빠른 메모/노트 컴포넌트
+    ├── hooks/
+    │   └── usePullToRefresh.ts # 모바일 당겨서 새로고침 훅
+    └── utils/
+        ├── imageCompressor.ts # 클라이언트 측 실시간 Canvas 이미지 압축
+        └── cardStorage.ts     # IndexedDB 하이브리드 영속화 유틸리티
+```
+
+### 2.2 공통 데이터 타입 (`src/types.ts`)
+```typescript
+export type PageType = 'home' | 'bob' | 'news' | 'site' | 'lotto' | 'transfer' | 'memo';
+
+export interface FileItem {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  dataUrl?: string; // Compressed base64 DataURL or Blob URL
+  url?: string;
+}
+
+export interface FileGroupCard {
+  id: string;
+  title: string;
+  tag: string;
+  uploadedAt: string; // ISO string
+  files: FileItem[];
+}
+```
+
+---
+
+================================================================================
+SECTION 3. 핵심 기능 구현 상세 (FUNCTIONAL REQUIREMENTS)
+================================================================================
+
+### 3.1 메인 헤더 & 네비게이션 (`src/components/Header.tsx`)
+- 높이 50px 고정, Warm Beige 톤앤매너 (`#efe9de` 배경, `#e6dfd8` 하단 보더).
+- 로고 클릭 시 Home 페이지로 이동.
+- 탭 항목: Home, 옮겨볼까?, 식사 추천, 뉴스, 사이트, 로또, 메모.
+- 해시 기반 라우팅 지원 (`#transfer`, `#bob` 등) 및 클릭 시 주소창 update.
+
+### 3.2 '옮겨볼까?' 크로스 디바이스 파일 전송 (`src/components/FileTransfer.tsx`)
+- **드래그 앤 드롭 및 멀티 파일 선택**: 여러 파일 일괄 선택 및 이미지 전처리.
+- **이미지 실시간 압축 (`imageCompressor.ts`)**:
+  - `image/*` 타입인 경우 Canvas를 활용해 최대 1280px 비율 조절 및 0.75 JPEG 압축.
+- **IndexedDB 영속화 (`cardStorage.ts`)**:
+  - `mhdec_file_share_db` IndexedDB 활용.
+  - localStorage fallback 지원 (IndexedDB 지원 불가 시).
+- **Cloudflare KV 공유 생성 및 불러오기**:
+  - 6자리 단축 코드 생성 및 KV 연동 API 호출.
+  - 전송받기: 6자리 코드 입력 시 Cloudflare KV에서 전송 카드 불러오기.
+
+### 3.3 보조 기능 컴포넌트
+- `Home.tsx`: 각 기능별 요약 카드 및 빠른 이동 버튼 대시보드.
+- `Bob.tsx`: 음식 카테고리별 랜덤 식사 추천 및 메뉴 추가/선택 기능.
+- `News.tsx`: 주요 뉴스/트렌드 요약 리스트.
+- `Site.tsx`: 자주 사용하는 사이트 북마크/바로가기 링크.
+- `Lotto.tsx`: 6/45 로또 번호 시뮬레이션 및 번호 조합 생성기.
+- `Memo.tsx`: IndexedDB 기반 빠른 로컬 메모 작성/저장.
+
+---
+
+================================================================================
+SECTION 4. AI 자가 검증, 테스트 및 품질 보증 (SELF-VERIFICATION & TESTING)
+================================================================================
+
+개발 진행 시, AI 모델은 코드를 생성한 후 반드시 아래 **4단계 자가 검증 및 테스트 프로토콜**을 차례대로 수행해야 합니다.
+
+### [단계 1] 정적 타입 검증 및 빌드 테스트 (Static & Build Check)
+1. **타입 컴파일 검사**:
+   - `npx tsc --noEmit` 실행 (또는 이에 준하는 TypeScript static check 수행).
+   - 모든 `.ts`, `.tsx` 파일에서 타입 명시가 올바른지, `any` 타입 남용이나 missing property 에러가 없는지 확인.
+2. **프로덕션 빌드 테스트**:
+   - `npm run build` 실행.
+   - Vite/Webpack 빌드 과정에서 번들링 에러, 문법 에러, 미사용 모듈 참조 에러가 발생하지 않는지 확인.
+
+### [단계 2] 런타임 & 요구사항 체크리스트 검증 (Runtime & Requirements Checklist)
+AI 모델은 구현된 결과물이 아래 검증 항목을 모두 통과하는지 자가 평가를 진행하십시오.
+
+- [ ] **푸터 미생성 검증**: DOM 트리 상에 `<footer>` 태그 또는 푸터 역할을 하는 고정 하단 레이아웃이 없는지 확인.
+- [ ] **헤더 고정 및 패딩**: `Header.tsx`가 50px 높이로 상단 고정되고 콘텐츠가 헤더에 가려지지 않도록 메인 컨테이너에 `pt-[50px]`가 부여되었는지 확인.
+- [ ] **디자인 시스템 준수**: `SECTION 1`에 명시된 Warm Beige 컬러 팔레트 (`#faf9f5`, `#efe9de`, `#cc785c` 등)가 올바르게 적용되었는지 확인.
+- [ ] **IndexedDB Fallback 에러 핸들링**: IndexedDB 사용 중 예외(QuotaExceededError, Private Mode 제한 등) 발생 시 `localStorage`로 정상 전환되는지 코드 로직 검증.
+- [ ] **이미지 압축 유틸리티 검증**: `imageCompressor.ts`에서 대용량 이미지 입력 시 무한 루프나 메모리 누수 없이 DataURL/Blob으로 변환되는지 확인.
+- [ ] **React Hook 규칙 검증**: 조건문 내부에서 Hook 호출 금지, dependency array 누락 여부 등 React 공식 가이드라인 준수.
+
+### [단계 3] 자가 수정 및 디버깅 루프 (Self-Correction Loop)
+- **빌드/테스트 에러 발생 시**:
+  1. 에러 로그 및 스택 트레이스를 정밀 분석.
+  2. 에러가 발생한 원인 코드를 즉시 수정.
+  3. 수정 완료 후 `npm run build` 및 `npx tsc --noEmit`를 다시 수행하여 문제가 완벽히 해결되었는지 재검증.
+- **절대 금지 사항**:
+  - 에러를 숨기거나 (catch 블록에서 오류 무시), 실패하는 코드를 단순히 주석 처리하거나, 기능을 임의로 축소하여 릴리스하는 행위 금지.
+
+### [단계 4] 최종 검증 완료 보고 (Verification Report Output)
+모든 개발 및 자가 검증이 통과되면, 아래 양식으로 최종 보고를 출력하십시오.
+
+```
+[자가 검증 완료 보고서]
+1. 정적 타입 체크 (npx tsc --noEmit): 통과 (0 errors)
+2. 프로덕션 빌드 (npm run build): 성공
+3. 디자인 시스템 연동: SECTION 1 지정 테마 적용 완료
+4. 푸터 미생성 제약 검증: 통과 (푸터 요소 0개)
+5. 핵심 기능 자가 테스트:
+   - 파일 압축 & IndexedDB 영속화: 성공
+   - 탭 네비게이션 & 해시 라우팅: 성공
+```
+
+---
+
+================================================================================
+위의 명세와 디자인 시스템, 그리고 자가 검증 프로토콜을 바탕으로 전체 개발을 시작해 주세요.
+================================================================================
