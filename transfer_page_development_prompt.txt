@@ -22,7 +22,7 @@
 ```typescript
 export interface FileItem {
   id: string;
-  name: string;
+  name: string;/
   size: number;
   type: string;
   dataUrl?: string; // compressed base64 or blob URL

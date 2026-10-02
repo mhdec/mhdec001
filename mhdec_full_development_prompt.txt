@@ -1,22 +1,15 @@
 ================================================================================
-[일괄 개발 프롬프트] '마 므하노!' Web App 전체 기능 통합 개발 및 자가 검증 프롬프트
+[일괄 개발 프롬프트] '마 므하노!' Web App 전체 기능 완벽 클론 통합 개발 및 자가 검증 프롬프트
 ================================================================================
 
 당신은 최고 수준의 Full-Stack Web App Developer이자 Quality Assurance (QA) 엔지니어입니다.
-다음 프로젝트 명세와 구조, 기능 요구사항, 그리고 [디자인 시스템]을 바탕으로 '마 므하노!' Web App 전체 코드베이스를 일괄 구현(Full Implementation)하고, 스스로 빌드, 타입 체크, 자가 검증(Self-Verification) 및 테스트를 완료해 주세요.
+다음 프로젝트 명세와 구조, 상세 기능 요구사항, 그리고 [디자인 시스템]을 바탕으로 '마 므하노!' (MHDEC Web App) 전체 코드베이스를 단 한 번의 프롬프트 입력만으로 100% 완벽하게 일괄 구현(Full Implementation)하고, 스스로 빌드, 타입 체크, 런타임 자가 검증(Self-Verification) 및 테스트를 완료해 주세요.
 
 ---
 
 ================================================================================
 SECTION 1. 디자인 시스템 및 스타일 가이드 (DESIGN SYSTEM & STYLES)
---------------------------------------------------------------------------------
-※ [중요] 추후 다른 Design.md를 적용하고 싶을 경우, 아래의 
-   <!-- BEGIN DESIGN_SYSTEM_SPECIFICATION --> 에서 
-   <!-- END DESIGN_SYSTEM_SPECIFICATION --> 까지의 영역만 
-   새로운 Design.md 내용으로 교체하여 프롬프트를 재사용하십시오.
 ================================================================================
-
-<!-- BEGIN DESIGN_SYSTEM_SPECIFICATION -->
 
 ### 1.1 톤앤매너 & 디자인 테마 (Warm Beige / Anthropic-Claude Style)
 - **전체 컨셉**: 세련되고 따뜻한 느낌의 Warm Beige 톤앤매너
@@ -24,76 +17,86 @@ SECTION 1. 디자인 시스템 및 스타일 가이드 (DESIGN SYSTEM & STYLES)
   - 배경색 (Background): `#faf9f5`
   - 카카오/섹션 카드 배경 (Surface/Card): `#efe9de`
   - 테두리 및 구분선 (Border/Divider): `#e6dfd8`
-  - 서브 카카오/카드 보버 (Card Hover): `#e2d9cd`
+  - 카드 호버 (Card Hover): `#e8e0d2`
   - 주 포인트/액센트 버튼 (Primary/Accent): `#cc785c` (Warm Rust / Orange-Brown)
   - 보조 포인트/버튼 (Secondary Button): `#d98b72` / `#b8674d`
   - 기본 텍스트 (Primary Text): `#141413`
   - 서브 텍스트 (Secondary Text): `#6c6a64`
   - 경고/삭제/에러 (Danger/Error): `#c64545`
-  - 성공/완료 (Success): `#388e3c`
+  - 성공/선택 완료 (Success): `#5db872` / `#388e3c`
 
 ### 1.2 레이아웃 & 뷰포트 제약 조건 (Layout Constraints)
-- **상단 헤더**: 높이 50px 고정 헤더 (`Header.tsx`), z-index: 50, fixed/sticky 상단 고정.
-- **메인 컨테이너**: 상단 50px 헤더 공간을 고려한 `pt-[50px]`, 최대 너비 `max-w-4xl` 또는 `max-w-6xl` 중앙 정렬, 하단 패딩 확보.
-- **[핵심 필수 제약] 푸터 절대 금지 (NO FOOTER RULE)**:
-  - 어떠한 페이지 및 컴포넌트에도 하단 푸터(Footer) 영역을 생성하거나 노출하지 말 것.
+- **상단 헤더**: 높이 50px 고정 헤더 (`Header.tsx`, `h-[48px]` 실제 높이, `sticky top-0 z-40`, 하단 보더 `#e6dfd8`).
+- **메인 컨테이너**: 상단 50px 헤더 공간 고려, 최대 너비 `max-w-lg` 또는 `max-w-4xl` 중앙 정렬, 하단 패딩 `pb-6` 확보.
+- **[핵심 절대 필수 제약] 푸터 절대 금지 (NO FOOTER RULE)**:
+  - 어떠한 페이지 및 컴포넌트에도 하단 푸터(Footer) 영역을 생성하거나 DOM에 노출하지 말 것 (`<footer>` 태그 생성 엄금).
   - 모든 콘텐츠는 뷰포트 내 스크롤 영역 안에서 깔끔하게 종결되어야 함.
-
-### 1.3 반응형 및 컴포넌트 UI/UX 스타일
-- **모바일 퍼스트 (Mobile First)**: 모바일 터치 브라우저 및 PC 환경 모두에서 매끄럽게 작동.
-- **모서리 라운딩**: 카드/버튼 `rounded-xl` 또는 `rounded-2xl` 기본 적용.
-- **그림자 (Shadow)**: 과도하지 않은 은은한 `shadow-sm` 또는 `shadow-md`.
-- **애니메이션 & 트랜지션**: `transition-all duration-200 ease-in-out` 적용.
-
-<!-- END DESIGN_SYSTEM_SPECIFICATION -->
 
 ---
 
 ================================================================================
-SECTION 2. 프로젝트 구조 및 데이터 사양 (ARCHITECTURE & SCHEMAS)
+SECTION 2. 프로젝트 아키텍처 및 데이터 사양 (ARCHITECTURE & SCHEMAS)
 ================================================================================
 
-### 2.1 파일/폴더 아키텍처
+### 2.1 디렉토리 및 파일 구조
 ```
 /
 ├── index.html
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
-├── functions/               # Cloudflare Pages Functions
+├── functions/                     # Cloudflare Pages Functions Backend APIs
 │   └── api/
-│       └── transfer.ts      # Cloudflare KV 연동 API
+│       ├── memos/
+│       │   └── index.ts          # 메모 KV 영속화 API
+│       └── files/
+│           ├── index.ts          # 파일 카드 목록/저장/48시간 자동 Purge KV API
+│           ├── upload.ts         # Cloudflare R2 파일 업로드 API
+│           └── [id].ts           # R2 파일 다운로드 및 삭제 API
 └── src/
     ├── main.tsx
-    ├── App.tsx
-    ├── index.css
-    ├── types.ts             # 데이터 타입 및 인터페이스 모음
+    ├── App.tsx                    # 해시 라우팅 및 전역 상태 통합 관리
+    ├── index.css                  # Tailwind CSS 및 폰트 설정
+    ├── types.ts                   # 공통 데이터 타입 및 인터페이스
     ├── components/
-    │   ├── Header.tsx       # 50px 고정 헤더 및 네비게이션 탭
-    │   ├── Home.tsx         # 대시보드 / 메인 대문 페이지
-    │   ├── Bob.tsx          # '오늘 뭐 먹지?' 식사 추천 컴포넌트
-    │   ├── News.tsx         # 실시간 뉴스/브리핑 컴포넌트
-    │   ├── Site.tsx         # 바로가기 링크/사이트 모음
-    │   ├── Lotto.tsx        # 로또 번호 생성기 및 당첨 조회
-    │   ├── FileTransfer.tsx # '옮겨볼까?' 파일 전송 메인 컴포넌트
-    │   └── Memo.tsx         # 빠른 메모/노트 컴포넌트
+    │   ├── Header.tsx             # 50px 고정 헤더, 해시 라우팅, 액션 버튼
+    │   ├── Home.tsx               # 메인 대문 대시보드 (2열 메뉴 & 실시간 식단 배너)
+    │   ├── BobMukJa.tsx           # '밥묵자!' 오늘의 식단 및 과거 날짜 달력 조회 컴포넌트
+    │   ├── ReadNews.tsx           # '읽어보자!' 사내 뉴스 임베드 컴포넌트
+    │   ├── SiteInfo.tsx           # '현장어데고!' 현장 정보 임베드 컴포넌트
+    │   ├── LottoQuote.tsx         # '대박나자!' 명언 & 로또 5세트 자동 추천 컴포넌트
+    │   ├── FileTransfer.tsx       # '옮겨볼까?' 크로스 디바이스 파일 전송 컴포넌트
+    │   └── MemoAndJapanese.tsx    # '생각해라!' 메모장 & 일본어 50음도 학습 컴포넌트
     ├── hooks/
-    │   └── usePullToRefresh.ts # 모바일 당겨서 새로고침 훅
-    └── utils/
-        ├── imageCompressor.ts # 클라이언트 측 실시간 Canvas 이미지 압축
-        └── cardStorage.ts     # IndexedDB 하이브리드 영속화 유틸리티
+    │   └── usePullToRefresh.ts    # 모바일 당겨서 새로고침 훅 (브라우저 이탈 방지)
+    ├── utils/
+    │   ├── imageCompressor.ts     # 클라이언트 측 실시간 Canvas 이미지 압축 (1280px)
+    │   └── cardStorage.ts         # IndexedDB 하이브리드 영속화 유틸리티
+    └── data/
+        ├── quotes.ts              # 인생 명언 데이터베이스
+        └── japaneseData.ts        # 히라가나 / 가타카나 50음도 데이터베이스
 ```
 
-### 2.2 공통 데이터 타입 (`src/types.ts`)
+### 2.2 공통 데이터 타입 명세 (`src/types.ts`)
 ```typescript
 export type PageType = 'home' | 'bob' | 'news' | 'site' | 'lotto' | 'transfer' | 'memo';
+
+export type ThinkTab = 'memo' | 'japanese';
+
+export interface MemoItem {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface FileItem {
   id: string;
   name: string;
   size: number;
   type: string;
-  dataUrl?: string; // Compressed base64 DataURL or Blob URL
+  dataUrl?: string; // compressed base64 or blob URL
   url?: string;
 }
 
@@ -101,75 +104,192 @@ export interface FileGroupCard {
   id: string;
   title: string;
   tag: string;
-  uploadedAt: string; // ISO string
+  uploadedAt: string; // ISO 8601 string
   files: FileItem[];
 }
+
+export interface JapaneseChar {
+  char: string;
+  kana: string;   // 한국어 발음 (예: "아")
+  romaji: string; // 로마지 표기 (예: "a")
+  type: 'hiragana' | 'katakana';
+}
+
+export type JapaneseMode = 'hiragana' | 'katakana' | 'random';
 ```
 
 ---
 
 ================================================================================
-SECTION 3. 핵심 기능 구현 상세 (FUNCTIONAL REQUIREMENTS)
+SECTION 3. 유틸리티 & 커스텀 훅 상세 명세
 ================================================================================
 
-### 3.1 메인 헤더 & 네비게이션 (`src/components/Header.tsx`)
-- 높이 50px 고정, Warm Beige 톤앤매너 (`#efe9de` 배경, `#e6dfd8` 하단 보더).
-- 로고 클릭 시 Home 페이지로 이동.
-- 탭 항목: Home, 옮겨볼까?, 식사 추천, 뉴스, 사이트, 로또, 메모.
-- 해시 기반 라우팅 지원 (`#transfer`, `#bob` 등) 및 클릭 시 주소창 update.
+### 3.1 실시간 Canvas 이미지 압축 (`src/utils/imageCompressor.ts`)
+- 모바일 카메라 촬영 고용량 사진이 KV/IndexedDB 용량을 초과하지 않도록 클라이언트 측 실시간 압축 수행.
+- `compressImageIfNeeded(file: File, maxWidth = 1280, quality = 0.75)`:
+  - 파일 타입이 `image/*`인 경우 Canvas를 사용하여 가로/세로 최대 1280px 비율 조절 후 JPEG 품질 0.75의 DataURL로 변환.
+  - 비이미지 파일(PDF, ZIP, DOCX 등)은 원본 그대로 FileReader를 통해 Base64 DataURL로 변환.
 
-### 3.2 '옮겨볼까?' 크로스 디바이스 파일 전송 (`src/components/FileTransfer.tsx`)
-- **드래그 앤 드롭 및 멀티 파일 선택**: 여러 파일 일괄 선택 및 이미지 전처리.
-- **이미지 실시간 압축 (`imageCompressor.ts`)**:
-  - `image/*` 타입인 경우 Canvas를 활용해 최대 1280px 비율 조절 및 0.75 JPEG 압축.
-- **IndexedDB 영속화 (`cardStorage.ts`)**:
-  - `mhdec_file_share_db` IndexedDB 활용.
-  - localStorage fallback 지원 (IndexedDB 지원 불가 시).
-- **Cloudflare KV 공유 생성 및 불러오기**:
-  - 6자리 단축 코드 생성 및 KV 연동 API 호출.
-  - 전송받기: 6자리 코드 입력 시 Cloudflare KV에서 전송 카드 불러오기.
+### 3.2 IndexedDB 하이브리드 영속화 스토리지 (`src/utils/cardStorage.ts`)
+- `localStorage` 용량 한계(5MB) 극복을 위한 IndexedDB 스토리지.
+- DB명: `mhdec_file_share_db`, 버전: `1`, 스토어: `cards_store` (keyPath: `id`).
+- `saveCardsToDB(cards: FileGroupCard[])`: 기존 스토어 초기화 후 전체 카드 저장. 시크릿 모드나 용량 초과 예외 발생 시 `localStorage` (`mhdec_group_cards_meta`) fallback 지원.
+- `loadCardsFromDB()`: IndexedDB에서 카드 데이터 로드. 실패 시 `localStorage` fallback.
 
-### 3.3 보조 기능 컴포넌트
-- `Home.tsx`: 각 기능별 요약 카드 및 빠른 이동 버튼 대시보드.
-- `Bob.tsx`: 음식 카테고리별 랜덤 식사 추천 및 메뉴 추가/선택 기능.
-- `News.tsx`: 주요 뉴스/트렌드 요약 리스트.
-- `Site.tsx`: 자주 사용하는 사이트 북마크/바로가기 링크.
-- `Lotto.tsx`: 6/45 로또 번호 시뮬레이션 및 번호 조합 생성기.
-- `Memo.tsx`: IndexedDB 기반 빠른 로컬 메모 작성/저장.
+### 3.3 모바일 Pull-to-Refresh 훅 (`src/hooks/usePullToRefresh.ts`)
+- `usePullToRefresh(onRefresh: () => void)`:
+  - 모바일 터치 브라우저에서 화면 최상단(`window.scrollY <= 0`)에서 아래로 당길 때 브라우저 전체 새로고침(페이지 이탈)을 `e.cancelable && e.preventDefault()`로 방지.
+  - 당긴 거리(pullDistance)가 60px 초과 시 `onRefresh()` 콜백 호출.
+  - `{ containerRef, pullDistance }` 객체 반환.
 
 ---
 
 ================================================================================
-SECTION 4. AI 자가 검증, 테스트 및 품질 보증 (SELF-VERIFICATION & TESTING)
+SECTION 4. 백엔드 Cloudflare Pages Functions API 명세
 ================================================================================
 
-개발 진행 시, AI 모델은 코드를 생성한 후 반드시 아래 **4단계 자가 검증 및 테스트 프로토콜**을 차례대로 수행해야 합니다.
+### 4.1 메모 API (`functions/api/memos/index.ts`)
+- 바인딩: `MEMO_KV` (KVNamespace), 키: `shared_memos`
+- CORS & Cache Control 헤더:
+  - `Access-Control-Allow-Origin: *`, `GET, POST, OPTIONS, DELETE` 허용
+  - `Cache-Control: no-cache, no-store, must-revalidate`
+- `onRequestOptions`: 204 Status Response 반환.
+- `onRequestGet`: KV에서 `shared_memos` 로드 후 `{ memos: Array }` 반환.
+- `onRequestPost`: 요청 Body `{ memos: Array }` 받아 KV에 저장.
+
+### 4.2 파일 전송 API (`functions/api/files/index.ts`)
+- 바인딩: `MEMO_KV` (KVNamespace), 키: `shared_file_cards`
+- 만료 시간: `48시간` (`48 * 60 * 60 * 1000 ms`)
+- CORS & Cache Control 헤더 동일 적용.
+- `onRequestGet`:
+  - KV에서 `shared_file_cards` 로드.
+  - `uploadedAt` 기준 48시간이 지난 만료 카드는 자동으로 Purge(필터링) 후 KV에 재저장.
+  - 유효 카드 목록 `{ cards: Array }` 반환.
+- `onRequestPost`:
+  - Body: `{ cards: FileGroupCard[], deletedCardIds?: string[], replace?: boolean }`
+  - `replace: true` 시 전달받은 카드로 교체. `replace: false` 시 기존 데이터와 병합.
+  - 48시간 만료 카드 자동 필터링 후 KV 저장 및 응답 반환.
+
+### 4.3 파일 업로드/다운로드 API (`functions/api/files/upload.ts` & `[id].ts`)
+- 바인딩: `FILE_BUCKET` (R2Bucket)
+- `/api/files/upload`: FormData로 전달된 바이너리 파일 R2 업로드 및 `/api/files/{fileId}` 다운로드 URL 반환.
+- `/api/files/[id]`: GET 시 R2에서 파일 바이너리 스트리밍 및 `Content-Disposition: attachment; filename="..."` 헤더 설정. DELETE 시 삭제 처리.
+
+---
+
+================================================================================
+SECTION 5. 클라이언트 컴포넌트별 세부 구현 명세
+================================================================================
+
+### 5.1 통합 헤더 & 라우팅 (`src/App.tsx` & `src/components/Header.tsx`)
+- **페이지 라우팅**:
+  - URL 해시(#home, #bob, #news, #site, #lotto, #transfer, #memo) 및 `sessionStorage.getItem('mhdec_active_page')` 기반 라우팅.
+  - 새로고침 시 기존 페이지 유지, 페이지 이동 시 `window.scrollTo({ top: 0, behavior: 'smooth' })`.
+- **Header UI 구성**:
+  - 높이 50px 고정 (`h-[48px]`, `sticky top-0 z-40`, 배경 `#faf9f5`, 하단 보더 `#e6dfd8`).
+  - **좌측**: 현재 페이지가 'home'이 아닐 때만 '홈' 이동 버튼 노출 (`HomeIcon`, `#efe9de` 배경).
+  - **중앙**: 페이지별 한글 타이틀 ('마 므하노!', '밥묵자!', '읽어보자!', '현장어데고!', '대박나자!', '옮겨볼까?', '생각해라!').
+  - **우측 액션 버튼**:
+    - 'news' / 'site': "새 창" 외부 링크 버튼 (`ExternalLink` 아이콘).
+    - 'lotto' / 'transfer': "새로고침" 버튼 (`RefreshCw` 아이콘) -> 클릭 시 해당 컴포넌트 새로고침 함수 실행.
+    - 'memo': "메모" / "일어" 세그먼트 토글 버튼 (`thinkTab` 상태 변경).
+
+### 5.2 메인 대문 페이지 (`src/components/Home.tsx`)
+- **상단 서울 날짜 배너**: `📅 YYYY년 MM월 DD일 (요일)` 형식 (서울 시간 표준시 기준).
+- **2열 그리드 메인 메뉴 버튼 (6개)**:
+  1) `밥묵자!`: 오늘의 메뉴 확인 (`Utensils` 아이콘)
+  2) `읽어보자!`: 신문 및 뉴스 (`Newspaper` 아이콘)
+  3) `현장어데고!`: 현장 정보 안내 (`MapPin` 아이콘)
+  4) `대박나자!`: 좋은 글귀 & 로또 (`Sparkles` 아이콘)
+  5) `옮겨볼까?`: 파일 및 사진 공유 (`FolderSync` 아이콘)
+  6) `생각해라!`: 메모 & 일본어 공부 (`Brain` 아이콘)
+- **오늘의 식단 배너**:
+  - `BASE_URL = https://gais2.hdec.co.kr/HDECGAIS.WebUI/Files/Bokj/MAIN/PORTLET`
+  - 서울 시간 오전 7시 55분 전이면 index `[1]`, 7시 55분 이후면 index `[2, 3, 4]`.
+  - jpg / png 이미지 순차 검증(`tryLoadImage`) 후 존재하는 식단 이미지 최대 3개 표시.
+
+### 5.3 '밥묵자!' 오늘의 식단 (`src/components/BobMukJa.tsx`)
+- **식단 이미지 조회**: GAIS 포털 연동, 최대 3개 식단 이미지 표시 (이미지 외 텍스트 없음).
+- **날짜 선택 캘린더 모달**:
+  - 선택 가능 범위: 서울 시간 기준 전전달 1일(`minDate`) ~ 오늘(`maxDate`).
+  - 모달 내부: 월 변경 Chevron 버튼, "오늘", "어제" 퀵 선택 버튼, 일~토 요일 헤더, 선택 불가 날짜 비활성화 스타일.
+- **새벽 4시 자동 새로고침**: 서울 시간 04:00 AM 도달 시 자동으로 `window.location.reload()` 실행하는 타이머 설정.
+
+### 5.4 '읽어보자!' & '현장어데고!' 임베드 (`src/components/ReadNews.tsx` & `src/components/SiteInfo.tsx`)
+- `ReadNews.tsx`: `https://autowayif.hdec.co.kr/NewsPaper/NewsPaperViewNew.aspx?Seq=` 주소를 iframe 풀사이즈(`h-[calc(100vh-48px)]`)로 임베딩.
+- `SiteInfo.tsx`: `https://siteinfo.hdec.co.kr/m_SiteInfo.aspx` 주소를 iframe 풀사이즈(`h-[calc(100vh-48px)]`)로 임베딩.
+
+### 5.5 '대박나자!' 명언 & 로또 (`src/components/LottoQuote.tsx` & `src/data/quotes.ts`)
+- **오늘의 한 줄 명언**: `quotes.ts` 데이터베이스에서 난수 추출하여 렌더링.
+- **로또 6/45 5세트 (A~E행) 자동 생성**:
+  - 1~10번: 노랑 (`bg-[#f59e0b]`)
+  - 11~20번: 파랑 (`bg-[#2563eb]`)
+  - 21~30번: 빨강 (`bg-[#dc2626]`)
+  - 31~40번: 다크그레이 (`bg-[#4b5563]`)
+  - 41~45번: 초록 (`bg-[#10b981]`)
+- **개별 행 복사**: 클립보드 복사 (`navigator.clipboard.writeText`), 복사 완료 시 2초간 초과 체크 아이콘 표시.
+- **Pull-to-Refresh**: 아래로 당겨서 명언 및 로또 번호 재생성.
+
+### 5.6 '생각해라!' 메모 & 일어 공부 (`src/components/MemoAndJapanese.tsx` & `src/data/japaneseData.ts`)
+- **[메모 탭]**:
+  - `/api/memos` 백엔드 API 및 `localStorage` (`mhdec_memos`) 동시 연동.
+  - 메모 카드: 제목, 첫 번째 줄 내용 추출 (`getFirstLine`) 표시, 작성 날짜.
+  - 메모 작성/수정 모달: 85vh 높이의 팝업 modal, 제목 및 다줄 textarea, 저장/취소.
+  - 메모 삭제 지원.
+- **[일어 탭]**:
+  - `HIRAGANA_DATA` (50음도) & `KATAKANA_DATA` (50음도) 모듈화 (`japaneseData.ts`).
+  - 모드: 히라가나 / 가타카나 / 랜덤 혼합.
+  - **서브 탭 1 (플래시카드)**:
+    - 대형 일본어 글자 표시.
+    - **[핵심 특수 기능] 음(발음) 상자를 1초(1000ms) 이상 터치/클릭 유지 시에만 발음(kana, romaji) 공개** (`onMouseDown`/`onTouchStart` 1초 타이머 활용).
+    - '다음 글자 ▶' 버튼 클릭 시 새로운 랜덤 글자 표시.
+  - **서브 탭 2 & 3 (2x2 Grid 퀴즈 테스트)**:
+    - "글씨 보고 음 선택" / "음 보고 글씨 선택" 4지선다 퀴즈.
+    - 정답 시 점수(Score) 누적 증가.
+    - 선택 시 정답 (`#5db872`) 및 오답 (`#c64545`) 색상 시각화 및 '다음 문제 ▶' 버튼 노출.
+
+### 5.7 '옮겨볼까?' 크로스 디바이스 파일 전송 (`src/components/FileTransfer.tsx`)
+- **업로드 폼 & 엄격한 검증 규칙**:
+  - 한 번에 업로드 가능한 파일 개수는 **최대 20개**. 초과 시 경고 메시지 출력 및 중단.
+  - **개별 파일 용량 제한: 파일 당 최대 15MB 제한**. 15MB 초과 파일 존재 시 `'파일명 (용량) 파일이 15MB 용량 제한을 초과합니다.'` 경고 문구 출력 및 업로드 취소. (카드 전체 합산 용량 제한은 없음).
+  - 제목 미입력 시 `"[첫번째파일명] 외 N-1개"` 자동 설정, 태그 입력 시 `#` 프레픽스 자동 부여.
+- **48시간 카운트다운 타이머**: 1초 간격으로 각 카드별 남은 시간 초 단위 실시간 계산 (`X시간 Y분 Z초 남음`). 48시간 초과 시 자동 삭제.
+- **카드 세부보기 모달 (`activeModalCard`) & 파일 개별/다중 관리**:
+  - 카드 클릭 시 모달 오픈.
+  - 모달 내 기능: 파일 전체 순차 다운로드 (`FolderDown` 아이콘, 250ms interval), 선택 체크박스, 선택 파일 다운로드/삭제, 개별 파일 다운로드.
+- **iOS Safari 다운로드 최적화 & 토스트 알림**:
+  - Base64 to Blob 변환 (`dataURLtoBlob`): iOS Safari 환경에서 MIME 타입을 force `application/octet-stream`으로 변환하여 탭에서 바로 열리는 현상 방지.
+  - `target="_blank"` 속성 제거.
+  - iOS 다운로드 클릭 시 `'📥 파일 다운로드 시도 중 ('파일' 앱 ➜ '다운로드' 폴더 확인)'` 안내 토스트 바 4초간 상단 노출.
+- **검색 & 다중 카드 삭제**: 실시간 키워드 검색 및 카드 선택 일괄 삭제 기능.
+
+---
+
+================================================================================
+SECTION 6. AI 자가 검증, 테스트 및 품질 보증 (SELF-VERIFICATION & TESTING)
+================================================================================
+
+개발 진행 시, AI 모델은 코드를 작성한 후 반드시 아래 **4단계 자가 검증 및 테스트 프로토콜**을 수행해야 합니다.
 
 ### [단계 1] 정적 타입 검증 및 빌드 테스트 (Static & Build Check)
 1. **타입 컴파일 검사**:
-   - `npx tsc --noEmit` 실행 (또는 이에 준하는 TypeScript static check 수행).
-   - 모든 `.ts`, `.tsx` 파일에서 타입 명시가 올바른지, `any` 타입 남용이나 missing property 에러가 없는지 확인.
+   - `npx tsc --noEmit` 실행.
+   - 모든 `.ts`, `.tsx` 파일에서 타입 명시가 올바른지, missing property나 any 에러가 없는지 확인.
 2. **프로덕션 빌드 테스트**:
    - `npm run build` 실행.
-   - Vite/Webpack 빌드 과정에서 번들링 에러, 문법 에러, 미사용 모듈 참조 에러가 발생하지 않는지 확인.
+   - Vite 빌드 과정에서 번들링 에러나 미사용 모듈 참조 에러가 발생하지 않는지 확인.
 
-### [단계 2] 런타임 & 요구사항 체크리스트 검증 (Runtime & Requirements Checklist)
-AI 모델은 구현된 결과물이 아래 검증 항목을 모두 통과하는지 자가 평가를 진행하십시오.
-
-- [ ] **푸터 미생성 검증**: DOM 트리 상에 `<footer>` 태그 또는 푸터 역할을 하는 고정 하단 레이아웃이 없는지 확인.
-- [ ] **헤더 고정 및 패딩**: `Header.tsx`가 50px 높이로 상단 고정되고 콘텐츠가 헤더에 가려지지 않도록 메인 컨테이너에 `pt-[50px]`가 부여되었는지 확인.
-- [ ] **디자인 시스템 준수**: `SECTION 1`에 명시된 Warm Beige 컬러 팔레트 (`#faf9f5`, `#efe9de`, `#cc785c` 등)가 올바르게 적용되었는지 확인.
-- [ ] **IndexedDB Fallback 에러 핸들링**: IndexedDB 사용 중 예외(QuotaExceededError, Private Mode 제한 등) 발생 시 `localStorage`로 정상 전환되는지 코드 로직 검증.
-- [ ] **이미지 압축 유틸리티 검증**: `imageCompressor.ts`에서 대용량 이미지 입력 시 무한 루프나 메모리 누수 없이 DataURL/Blob으로 변환되는지 확인.
-- [ ] **React Hook 규칙 검증**: 조건문 내부에서 Hook 호출 금지, dependency array 누락 여부 등 React 공식 가이드라인 준수.
+### [단계 2] 런타임 & 요구사항 체크리스트 검증 (Runtime Checklist)
+- [ ] **푸터 미생성 검증**: DOM 트리 상에 `<footer>` 태그가 0개이며 푸터 영역이 전혀 노출되지 않는지 확인.
+- [ ] **헤더 고정 및 탭 연결**: `Header.tsx` 높이가 50px로 고정되고 우측 액션 버튼(새로고침, 새창, 메모/일어)이 정상 동작하는지 확인.
+- [ ] **디자인 시스템 준수**: Warm Beige 컬러 팔레트 (`#faf9f5`, `#efe9de`, `#cc785c` 등)가 전체 페이지에 일관되게 적용되었는지 확인.
+- [ ] **15MB 제한 및 20개 제한**: '옮겨볼까?' 컴포넌트에서 파일 제한 경고 문구가 정확히 출력되는지 확인.
+- [ ] **iOS Safari 다운로드 최적화**: MIME force octet-stream 및 안내 토스트 알림 로직 검증.
+- [ ] **일본어 1초 터치 공개**: 플래시카드에서 1초(1000ms) 유지 시에만 발음이 노출되는지 확인.
+- [ ] **로또 번호 생성 & 복사**: 5세트 색상 분기와 클립보드 복사 동작 검증.
 
 ### [단계 3] 자가 수정 및 디버깅 루프 (Self-Correction Loop)
-- **빌드/테스트 에러 발생 시**:
-  1. 에러 로그 및 스택 트레이스를 정밀 분석.
-  2. 에러가 발생한 원인 코드를 즉시 수정.
-  3. 수정 완료 후 `npm run build` 및 `npx tsc --noEmit`를 다시 수행하여 문제가 완벽히 해결되었는지 재검증.
-- **절대 금지 사항**:
-  - 에러를 숨기거나 (catch 블록에서 오류 무시), 실패하는 코드를 단순히 주석 처리하거나, 기능을 임의로 축소하여 릴리스하는 행위 금지.
+- 에러 발생 시 로그 분석 후 즉시 수정하고 `npm run build` 및 `npx tsc --noEmit`를 다시 수행하여 통과할 때까지 재검증.
 
 ### [단계 4] 최종 검증 완료 보고 (Verification Report Output)
 모든 개발 및 자가 검증이 통과되면, 아래 양식으로 최종 보고를 출력하십시오.
@@ -178,15 +298,15 @@ AI 모델은 구현된 결과물이 아래 검증 항목을 모두 통과하는�
 [자가 검증 완료 보고서]
 1. 정적 타입 체크 (npx tsc --noEmit): 통과 (0 errors)
 2. 프로덕션 빌드 (npm run build): 성공
-3. 디자인 시스템 연동: SECTION 1 지정 테마 적용 완료
+3. 디자인 시스템 연동: Warm Beige 톤앤매너 적용 완료
 4. 푸터 미생성 제약 검증: 통과 (푸터 요소 0개)
 5. 핵심 기능 자가 테스트:
-   - 파일 압축 & IndexedDB 영속화: 성공
-   - 탭 네비게이션 & 해시 라우팅: 성공
+   - 파일전송 (20개/15MB 제한, 48h 타이머, iOS 다운로드 대응): 성공
+   - 메모장 & 일본어 50음도 (1초 터치 공개, 2x2 퀴즈): 성공
+   - 로또 5세트 복사 & 오늘의 명언: 성공
+   - 밥먹자 식단 조회 & 캘린더 모달: 성공
 ```
 
----
-
 ================================================================================
-위의 명세와 디자인 시스템, 그리고 자가 검증 프로토콜을 바탕으로 전체 개발을 시작해 주세요.
+위의 완벽 명세와 디자인 시스템, 자가 검증 프로토콜을 바탕으로 개발을 진행해 주세요.
 ================================================================================
