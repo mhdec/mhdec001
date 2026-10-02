@@ -1,0 +1,134 @@
+================================================================================
+[프롬프트] '마 므하노!' 크로스 디바이스 파일 공유/전송 '옮겨볼까?' 페이지 일괄 개발 프롬프트
+================================================================================
+
+당신은 최고 수준의 Full-Stack Web App Developer입니다.
+다음 명세와 요구사항을 바탕으로 React + TypeScript + Cloudflare Pages Functions(KV) 환경에서 작동하는 모바일/PC 겸용 대용량 멀티 파일 전송 페이지인 **'옮겨볼까?' (FileTransfer)** 기능 전체를 완벽하게 일괄 작성(Full Implementation)해주세요.
+
+---
+
+### 1. 프로젝트 개요 & 디자인 시스템 (Overview & Design Guidelines)
+- **앱 명칭**: 마 므하노! (MHDEC Web App)
+- **대상 페이지**: '옮겨볼까?' (FileTransfer Component / Hash `#transfer`)
+- **디자인 테마**: Claude / Anthropic 스타일의 Warm Beige 톤앤매너
+  - 배경색: `#faf9f5`, 섹션/카드 배경: `#efe9de`, 보더: `#e6dfd8`, 포인트/버튼: `#cc785c`, 텍스트: `#141413`, 서브 텍스트: `#6c6a64`, 경고/삭제: `#c64545`
+- **핵심 레이아웃 제약**:
+  - 상단 50px 고정 헤더(`Header.tsx`) 연동
+  - **[필수 제약]** 하단 푸터(Footer)는 어떠한 페이지에도 생성하지 말 것 (No footers on any page).
+
+---
+
+### 2. 데이터 타입 정의 (`src/types.ts`)
+```typescript
+export interface FileItem {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  dataUrl?: string; // compressed base64 or blob URL
+  url?: string;
+}
+
+export interface FileGroupCard {
+  id: string;
+  title: string;
+  tag: string;
+  uploadedAt: string; // ISO 8601 string
+  files: FileItem[];
+}
+
+export type PageType = 'home' | 'bob' | 'news' | 'site' | 'lotto' | 'transfer' | 'memo';
+```
+
+---
+
+### 3. 유틸리티 구현 (Compressor & IndexedDB Storage)
+
+#### 3.1. 이미지 실시간 압축 유틸리티 (`src/utils/imageCompressor.ts`)
+- 모바일 카메라 촬영 사진(5~10MB 이상)이 스토리지 한도를 초과하지 않도록 클라이언트 측 Canvas 기반 실시간 압축 수행.
+- 이미지 파일(`image/*`)인 경우 최대 너비/높이 1280px 레터박스 비율 조율, JPEG 품질 0.75로 DataURL 변환.
+- 이미지가 아닌 파일(PDF, ZIP, DOCX 등)은 원본 그대로 FileReader를 통해 Base64 DataURL 변환.
+
+#### 3.2. IndexedDB 하이브리드 영속화 스토리지 (`src/utils/cardStorage.ts`)
+- `localStorage` 용량 제한(5MB) 문제를 해결하기 위해 IndexedDB 활용.
+- DB명: `mhdec_file_share_db`, 버전: `1`, 스토어: `cards_store` (keyPath: `id`).
+- `saveCardsToDB(cards: FileGroupCard[])`: 이전 데이터 클리어 후 전체 카드 저장. IndexedDB 실패 시 localStorage fallback 지원.
+- `loadCardsFromDB()`: IndexedDB에서 전체 카드를 읽어오고 실패 시 localStorage fallback 지원.
+
+---
+
+### 4. 커스텀 훅 - Mobile Touch Pull-to-Refresh (`src/hooks/usePullToRefresh.ts`)
+- 모바일 브라우저에서 사용자가 화면 상단에서 아래로 당겼을 때 브라우저 전체 새로고침(페이지 이탈)을 방지(`e.preventDefault()`)하면서, '옮겨볼까?' 카드 데이터를 서버와 동기화하는 훅.
+- `window.scrollY <= 0`일 때만 작동하며 60px 이상 당긴 후 떼면 `onRefresh` 콜백 호출.
+- `{ containerRef, pullDistance }` 반환.
+
+---
+
+### 5. 백엔드 API & Cloudflare KV 연동 (`functions/api/files/index.ts`)
+Cloudflare Pages Functions API 엔드포인트 `/api/files` 작성:
+- 바인딩: `MEMO_KV` (KVNamespace), 키: `shared_file_cards`
+- 만료 시간: `48시간` (`48 * 60 * 60 * 1000 ms`)
+- **CORS & Cache Control**:
+  - `Access-Control-Allow-Origin: *`, `GET, POST, OPTIONS, DELETE` 허용.
+  - `Cache-Control: no-cache, no-store, must-revalidate` (iOS Safari 304 캐시 고정 방지).
+- **`onRequestOptions`**: 204 Response 반환.
+- **`onRequestGet`**:
+  - KV에서 `shared_file_cards` 읽기.
+  - 48시간 지난 만료 카드는 자동으로 Purge(필터링) 후 KV에 업데이트.
+  - 유효한 카드 목록 반환.
+- **`onRequestPost`**:
+  - 요청 body: `{ cards: FileGroupCard[], deletedCardIds?: string[], replace?: boolean }`
+  - `replace: true`인 경우 전달받은 카드로 교체. `replace: false`인 경우 기존 데이터와 병합.
+  - 48시간 지난 만료 카드 필터링 후 KV 저장 및 응답 반환.
+
+---
+
+### 6. 클라이언트 컴포넌트 (`src/components/FileTransfer.tsx`)
+
+#### 6.1. 업로드 폼 & 엄격한 검증 규칙
+- **최대 개수 제한**: 한 번에 업로드 가능한 파일 개수는 **최대 20개**. 초과 시 안내 메시지 표시 및 중단.
+- **개별 파일 용량 제한**: **개별 파일 당 최대 15MB 제한**. 15MB 초과 파일 존재 시 `'파일명 (용량) 파일이 15MB 용량 제한을 초과합니다.'` 경고 문구 출력 및 업로드 취소. (단, 카드 전체 합산 용량 제한은 없음).
+- **입력 폼**:
+  - 카드 제목 입력 (미입력 시 `"[첫번째파일명] 외 N-1개"` 자동 설정)
+  - 태그 입력 (입력 시 `#` 프레픽스 자동 붙임)
+
+#### 6.2. 실시간 48시간 카운트다운 타이머
+- `nowTime` (1초 간격 `setInterval`) 상태 기반으로 각 카드마다 남은 시간 실시간 표시 (`X시간 Y분 Z초 남음`).
+- 48시간 초과 시 `'만료됨 (삭제 처리중)'` 표시 및 클라이언트/서버에서 자동으로 필터링 삭제.
+
+#### 6.3. 카드 세부보기 모달 (`activeModalCard`) & 파일 개별/다중 관리
+- 카드 클릭 시 세부 파일 목록 모달 오픈.
+- 모달 내부 기능:
+  - 카드 내 파일 전체 다운로드 버튼 (`FolderDown` 아이콘, 250ms 간격 순차 다운로드)
+  - 모달 내부 파일 개별 체크박스 & 전체 선택/해제 토글
+  - 선택한 파일만 다운로드 / 선택한 파일만 삭제 (카드 내 모든 파일 삭제 시 카드 자체 자동 삭제)
+  - 개별 파일 다운로드 버튼
+
+#### 6.4. iOS Safari 전용 다운로드 최적화 및 안내 토스트
+- **iOS 감지**: `/iPad|iPhone|iPod/.test(navigator.userAgent)` 또는 MacIntel touch.
+- **Base64 to Blob 변환 (`dataURLtoBlob`)**: iOS Safari인 경우 MIME 타입을 force `application/octet-stream`으로 전환하여 브라우저 내 문서 뷰어로 열리는 현상을 방지하고 네이티브 다운로드 팝업 유도.
+- **링크 속성**: iOS Safari에서는 `target="_blank"`를 absolute 불사용 (`target="_blank"` 사용 시 Safari가 PDF를 탭에서 열어버림).
+- **안내 토스트**: iOS 다운로드 클릭 시 `📥 파일 다운로드 시도 중 ('파일' 앱 ➜ '다운로드' 폴더 확인)` 상단 안내 토스트 바 4초간 노출.
+
+#### 6.5. 카드 검색 & 일괄 삭제
+- 상단 검색창에서 제목 또는 태그 키워드로 실시간 검색 필터링.
+- 메인 화면 카드 일괄 선택 체크박스 및 선택된 카드 다중 삭제 지원. 삭제 시 KV 및 IndexedDB 동시 반영.
+
+---
+
+### 7. 라우팅 및 앱 통합 (`src/App.tsx` & `src/components/Header.tsx`)
+- `sessionStorage.setItem('mhdec_active_page', 'transfer')` 및 `window.location.hash = 'transfer'` 기반 새로고침 시 페이지 상태 유지.
+- Header에 '옮겨볼까?' 전용 동기화 새로고침 버튼 배치 및 `onRegisterRefresh` 콜백 연결.
+- API 호출 시 `?_t=${Date.now()}` query parameter를 추가하여 캐싱 방지.
+
+---
+
+### 8. 최종 검증 및 테스트 체크리스트
+1. **파일 20개 제한 및 15MB 개별 파일 제한**이 정상 작동하며 초과 시 에러 문구가 뜨는가?
+2. **사진 파일 업로드 시 Canvas 압축**이 적용되어 KV 저장용량이 안전하게 유지되는가?
+3. **iOS Safari에서 PDF/이미지 다운로드 시** 탭으로 열리지 않고 '파일' 앱 다운로드 폴더로 정상 다운로드되는가?
+4. **48시간 카운트다운**이 실시간(초 단위)으로 갱신되며 만료 시 자동 삭제되는가?
+5. **모바일 당겨서 새로고침(Pull-to-Refresh)** 시 브라우저 기본 새로고침이 발생하지 않고 동기화가 수행되는가?
+6. **푸터가 존재하지 않으며** Warm Beige 톤앤매너 디자인이 일관되게 유지되는가?
+
+================================================================================
