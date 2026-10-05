@@ -247,29 +247,29 @@ export const ZipGaja: React.FC = () => {
       {/* ========================================================================= */}
       <section className="bg-white rounded-2xl border border-[#e6dfd8] shadow-xs overflow-hidden">
         {/* Naver Map Style Header with Line 3 Signature Orange Accent */}
-        <div className="bg-gradient-to-r from-[#EF6C00] to-[#F57C00] text-white px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="w-7 h-7 rounded-full bg-white text-[#EF6C00] font-black text-[15px] flex items-center justify-center shadow-xs border-2 border-[#EF6C00]">
+        <div className="bg-gradient-to-r from-[#EF6C00] to-[#F57C00] text-white px-4 py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-7 h-7 rounded-full bg-white text-[#EF6C00] font-black text-[15px] flex items-center justify-center shadow-xs border-2 border-[#EF6C00] shrink-0">
               3
             </span>
-            <div>
-              <h2 className="text-[18px] font-extrabold tracking-tight flex items-center gap-1.5">
+            <div className="min-w-0">
+              <h2 className="text-[18px] font-extrabold tracking-tight flex items-center gap-1.5 whitespace-nowrap">
                 안국역
-                <span className="text-[12px] font-medium bg-white/20 px-2 py-0.5 rounded-full">3호선</span>
+                <span className="text-[11px] font-medium bg-white/20 px-2 py-0.5 rounded-full whitespace-nowrap">3호선</span>
               </h2>
             </div>
           </div>
 
           {/* Time & Refresh */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-[11px] bg-black/20 px-2.5 py-1 rounded-full text-white/90">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1 text-[11px] bg-black/20 px-2.5 py-1 rounded-full text-white/90 whitespace-nowrap">
               <Clock className="w-3 h-3" />
-              <span>{subwayTime || '조회 중...'}</span>
+              <span className="whitespace-nowrap">{subwayTime || '조회 중...'}</span>
             </div>
             <button
               onClick={fetchSubwayData}
               disabled={subwayLoading}
-              className="p-1.5 rounded-full hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+              className="p-1.5 rounded-full hover:bg-white/20 active:scale-95 transition-all cursor-pointer shrink-0"
               title="안국역 새로고침"
             >
               <RefreshCw className={`w-4 h-4 text-white ${subwayLoading ? 'animate-spin' : ''}`} />
@@ -424,58 +424,64 @@ export const ZipGaja: React.FC = () => {
       {/* ========================================================================= */}
       <section className="bg-white rounded-2xl border border-[#e6dfd8] shadow-xs overflow-hidden transition-all">
         {/* Header */}
-        <div className="bg-[#efe9de] p-3.5 border-b border-[#e6dfd8] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#cc785c] text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Bus className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h2 className="text-[16px] font-extrabold text-[#141413] tracking-tight">
+        <div className="bg-[#efe9de] p-3.5 border-b border-[#e6dfd8] space-y-2">
+          {/* Top Row: Icon + Title + ARS_ID & Action Buttons */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-[#cc785c] text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Bus className="w-4 h-4" />
+              </div>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h2 className="text-[16px] font-extrabold text-[#141413] tracking-tight whitespace-nowrap">
                   회사앞 정류장
                 </h2>
-                <span className="text-[11px] bg-[#faf9f5] border border-[#e6dfd8] text-[#6c6a64] px-1.5 py-0.5 rounded-md font-mono">
+                <span className="text-[11px] bg-[#faf9f5] border border-[#e6dfd8] text-[#6c6a64] px-1.5 py-0.5 rounded-md font-mono whitespace-nowrap shrink-0">
                   01172
                 </span>
               </div>
-              <p className="text-[11px] text-[#6c6a64] font-medium">
-                안국역, 서울공예박물관 방면
-              </p>
             </div>
-          </div>
 
-          {/* Refresh & Collapse Toggle */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-[11px] text-[#6c6a64] bg-[#faf9f5] px-2.5 py-1 rounded-lg border border-[#e6dfd8]">
-              <Clock className="w-3 h-3 text-[#cc785c]" />
-              <span className="font-medium">{frontTime || '조회 중'}</span>
+            {/* Refresh & Collapse Buttons */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={handleFrontRefresh}
                 disabled={frontLoading}
-                className="ml-1 text-[#cc785c] hover:text-[#a9583e] cursor-pointer"
+                className="p-1.5 rounded-lg bg-[#faf9f5] border border-[#e6dfd8] text-[#cc785c] hover:bg-white active:scale-95 transition-all cursor-pointer"
                 title="회사앞 정류장 새로고침"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${frontLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${frontLoading ? 'animate-spin' : ''}`} />
+              </button>
+
+              <button
+                onClick={() => setFrontCollapsed(prev => !prev)}
+                className="p-1.5 rounded-lg bg-[#faf9f5] border border-[#e6dfd8] text-[#141413] hover:bg-white active:scale-95 transition-all cursor-pointer"
+                title={frontCollapsed ? '펼치기' : '접기'}
+              >
+                {frontCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
               </button>
             </div>
+          </div>
 
-            <button
-              onClick={() => setFrontCollapsed(prev => !prev)}
-              className="p-1.5 rounded-lg bg-[#faf9f5] border border-[#e6dfd8] text-[#141413] hover:bg-white active:scale-95 transition-all cursor-pointer"
-              title={frontCollapsed ? '펼치기' : '접기'}
-            >
-              {frontCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            </button>
+          {/* Sub Row: Direction Info & Load Time Badge */}
+          <div className="flex items-center justify-between gap-2 text-[11px] text-[#6c6a64] pt-1 border-t border-[#e6dfd8]/60">
+            <p className="font-medium truncate min-w-0">
+              안국역, 서울공예박물관 방면
+            </p>
+
+            <div className="flex items-center gap-1 bg-[#faf9f5] px-2 py-0.5 rounded-md border border-[#e6dfd8] shrink-0 whitespace-nowrap">
+              <Clock className="w-3 h-3 text-[#cc785c]" />
+              <span className="font-medium text-[11px] whitespace-nowrap">{frontTime || '조회 중'}</span>
+            </div>
           </div>
         </div>
 
         {/* Soonest Arriving Bus Banner (ALWAYS VISIBLE EVEN WHEN COLLAPSED) */}
-        <div className="bg-[#f5f0e8] px-4 py-2 border-b border-[#e6dfd8] flex items-center justify-between text-[12px]">
-          <span className="font-semibold text-[#141413] flex items-center gap-1.5">
+        <div className="bg-[#f5f0e8] px-4 py-2 border-b border-[#e6dfd8] flex items-center justify-between gap-2 text-[12px]">
+          <span className="font-semibold text-[#141413] flex items-center gap-1.5 shrink-0 whitespace-nowrap">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             곧 도착 버스:
           </span>
-          <span className="font-bold text-[#cc785c] bg-white px-2.5 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs">
+          <span className="font-bold text-[#cc785c] bg-white px-2.5 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs truncate max-w-[200px] text-right whitespace-nowrap">
             {getSoonestBusText(frontBuses)}
           </span>
         </div>
@@ -532,58 +538,64 @@ export const ZipGaja: React.FC = () => {
       {/* ========================================================================= */}
       <section className="bg-white rounded-2xl border border-[#e6dfd8] shadow-xs overflow-hidden transition-all">
         {/* Header */}
-        <div className="bg-[#efe9de] p-3.5 border-b border-[#e6dfd8] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#5db8a6] text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Bus className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h2 className="text-[16px] font-extrabold text-[#141413] tracking-tight">
+        <div className="bg-[#efe9de] p-3.5 border-b border-[#e6dfd8] space-y-2">
+          {/* Top Row: Icon + Title + ARS_ID & Action Buttons */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-[#5db8a6] text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Bus className="w-4 h-4" />
+              </div>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h2 className="text-[16px] font-extrabold text-[#141413] tracking-tight whitespace-nowrap">
                   회사 건너편 정류장
                 </h2>
-                <span className="text-[11px] bg-[#faf9f5] border border-[#e6dfd8] text-[#6c6a64] px-1.5 py-0.5 rounded-md font-mono">
+                <span className="text-[11px] bg-[#faf9f5] border border-[#e6dfd8] text-[#6c6a64] px-1.5 py-0.5 rounded-md font-mono whitespace-nowrap shrink-0">
                   01199
                 </span>
               </div>
-              <p className="text-[11px] text-[#6c6a64] font-medium">
-                창경궁, 서울대학교병원 방면
-              </p>
             </div>
-          </div>
 
-          {/* Refresh & Collapse Toggle */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-[11px] text-[#6c6a64] bg-[#faf9f5] px-2.5 py-1 rounded-lg border border-[#e6dfd8]">
-              <Clock className="w-3 h-3 text-[#5db8a6]" />
-              <span className="font-medium">{acrossTime || '조회 중'}</span>
+            {/* Refresh & Collapse Buttons */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={handleAcrossRefresh}
                 disabled={acrossLoading}
-                className="ml-1 text-[#5db8a6] hover:text-[#459585] cursor-pointer"
+                className="p-1.5 rounded-lg bg-[#faf9f5] border border-[#e6dfd8] text-[#5db8a6] hover:bg-white active:scale-95 transition-all cursor-pointer"
                 title="회사 건너편 정류장 새로고침"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${acrossLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${acrossLoading ? 'animate-spin' : ''}`} />
+              </button>
+
+              <button
+                onClick={() => setAcrossCollapsed(prev => !prev)}
+                className="p-1.5 rounded-lg bg-[#faf9f5] border border-[#e6dfd8] text-[#141413] hover:bg-white active:scale-95 transition-all cursor-pointer"
+                title={acrossCollapsed ? '펼치기' : '접기'}
+              >
+                {acrossCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
               </button>
             </div>
+          </div>
 
-            <button
-              onClick={() => setAcrossCollapsed(prev => !prev)}
-              className="p-1.5 rounded-lg bg-[#faf9f5] border border-[#e6dfd8] text-[#141413] hover:bg-white active:scale-95 transition-all cursor-pointer"
-              title={acrossCollapsed ? '펼치기' : '접기'}
-            >
-              {acrossCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            </button>
+          {/* Sub Row: Direction Info & Load Time Badge */}
+          <div className="flex items-center justify-between gap-2 text-[11px] text-[#6c6a64] pt-1 border-t border-[#e6dfd8]/60">
+            <p className="font-medium truncate min-w-0">
+              창경궁, 서울대학교병원 방면
+            </p>
+
+            <div className="flex items-center gap-1 bg-[#faf9f5] px-2 py-0.5 rounded-md border border-[#e6dfd8] shrink-0 whitespace-nowrap">
+              <Clock className="w-3 h-3 text-[#5db8a6]" />
+              <span className="font-medium text-[11px] whitespace-nowrap">{acrossTime || '조회 중'}</span>
+            </div>
           </div>
         </div>
 
         {/* Soonest Arriving Bus Banner (ALWAYS VISIBLE EVEN WHEN COLLAPSED) */}
-        <div className="bg-[#f5f0e8] px-4 py-2 border-b border-[#e6dfd8] flex items-center justify-between text-[12px]">
-          <span className="font-semibold text-[#141413] flex items-center gap-1.5">
+        <div className="bg-[#f5f0e8] px-4 py-2 border-b border-[#e6dfd8] flex items-center justify-between gap-2 text-[12px]">
+          <span className="font-semibold text-[#141413] flex items-center gap-1.5 shrink-0 whitespace-nowrap">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             곧 도착 버스:
           </span>
-          <span className="font-bold text-[#5db8a6] bg-white px-2.5 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs">
+          <span className="font-bold text-[#5db8a6] bg-white px-2.5 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs truncate max-w-[200px] text-right whitespace-nowrap">
             {getSoonestBusText(acrossBuses)}
           </span>
         </div>
