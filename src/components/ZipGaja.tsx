@@ -37,6 +37,15 @@ function formatAmPm(date: Date = new Date()): string {
 }
 
 /**
+ * Format subway arrival message:
+ * Removes parenthesis content e.g. "4분 30초 후 (독립문)" -> "4분 30초 후"
+ */
+function formatSubwayArvlMsg(msg: string): string {
+  if (!msg) return '';
+  return msg.replace(/\s*\([^)]*\)/g, '').trim();
+}
+
+/**
  * Get Bus Number Text Style:
  * 3-digits -> Blue, Bold
  * 4-digits -> Green, Bold
@@ -341,7 +350,7 @@ export const ZipGaja: React.FC = () => {
                               ? 'bg-[#ffe0b2] text-[#e65100] animate-pulse'
                               : 'bg-[#efe9de] text-[#141413]'
                           }`}>
-                            {item.arvlMsg2}
+                            {formatSubwayArvlMsg(item.arvlMsg2)}
                           </span>
                           {item.arvlMsg3 && item.arvlMsg3 !== item.statnNm && (
                             <span className="text-[10px] text-[#8e8b82] block mt-0.5">
@@ -401,7 +410,7 @@ export const ZipGaja: React.FC = () => {
                               ? 'bg-[#ffe0b2] text-[#e65100] animate-pulse'
                               : 'bg-[#efe9de] text-[#141413]'
                           }`}>
-                            {item.arvlMsg2}
+                            {formatSubwayArvlMsg(item.arvlMsg2)}
                           </span>
                           {item.arvlMsg3 && item.arvlMsg3 !== item.statnNm && (
                             <span className="text-[10px] text-[#8e8b82] block mt-0.5">
