@@ -166,27 +166,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     },
   ];
 
-  const getTodayFormatted = () => {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('ko-KR', {
-      timeZone: 'Asia/Seoul',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short',
-    });
-    return formatter.format(now);
-  };
-
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-3 space-y-5">
-      {/* Today's Date Banner below Header */}
-      <div className="text-center pb-2 border-b border-[#e6dfd8]">
-        <span className="text-[14px] font-bold text-[#cc785c] tracking-tight">
-          📅 {getTodayFormatted()}
-        </span>
-      </div>
-
       {/* 2-Column Main Navigation Buttons */}
       <section className="grid grid-cols-2 gap-3" aria-label="메인 메뉴">
         {mainButtons.map((btn) => {

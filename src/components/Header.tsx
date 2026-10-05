@@ -83,6 +83,11 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right side: Header actions */}
       <div className="flex items-center justify-end min-w-[80px]">
+        {currentPage === 'home' && (
+          <div className="flex items-center gap-1 text-[11px] sm:text-[12px] font-bold text-[#cc785c] bg-[#efe9de] px-2 py-1 rounded-lg border border-[#e6dfd8] shrink-0 whitespace-nowrap shadow-2xs">
+            <span>📅 {getTodayFormatted()}</span>
+          </div>
+        )}
         {(currentPage === 'news' || currentPage === 'site') && (
           <a
             href={

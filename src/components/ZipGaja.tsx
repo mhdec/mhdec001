@@ -338,7 +338,6 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
             <span className="w-2 h-2 rounded-full bg-[#EF6C00] animate-pulse"></span>
             10초 자동 새로고침 중
           </span>
-          <span className="text-[10px] text-[#b26a00]">네이버 지도 실시간 기준</span>
         </div>
 
         {/* Content Body: 2-Column Section Layout for Upbound / Downbound */}
