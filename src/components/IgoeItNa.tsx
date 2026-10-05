@@ -21,7 +21,7 @@ export const IgoeItNa: React.FC = () => {
     {
       id: 'autoway',
       name: 'Mobile Autoway',
-      url: 'https://autowayapps.hyundia.net/appstore/app/applist.sm',
+      url: 'https://autowayapps.hyundai.net/appstore/app/appList.sm?companyId=null',
       description: '그룹 통합 모바일 앱스토어 및 서비스',
       tag: '앱스토어',
     },
