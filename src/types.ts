@@ -1,4 +1,4 @@
-export type PageType = 'home' | 'bob' | 'news' | 'site' | 'lotto' | 'transfer' | 'memo';
+export type PageType = 'home' | 'bob' | 'news' | 'site' | 'lotto' | 'transfer' | 'memo' | 'zipgaja' | 'igoeitna';
 
 export type ThinkTab = 'memo' | 'japanese';
 

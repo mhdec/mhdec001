@@ -47,6 +47,10 @@ export const Header: React.FC<HeaderProps> = ({
         return '옮겨볼까?';
       case 'memo':
         return '생각해라!';
+      case 'zipgaja':
+        return '집가자!';
+      case 'igoeitna':
+        return '이거있나?';
       default:
         return '';
     }

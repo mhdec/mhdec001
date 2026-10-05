@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Utensils, Newspaper, MapPin, Sparkles, FolderSync, Brain } from 'lucide-react';
+import { Utensils, Newspaper, MapPin, Sparkles, FolderSync, Brain, Bus, AppWindow } from 'lucide-react';
 import { PageType } from '../types';
 
 interface HomeProps {
@@ -142,6 +142,24 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       label: '생각해라!',
       sub: '메모 & 일본어 공부',
       icon: Brain,
+      bgColor: 'bg-[#efe9de]',
+      hoverColor: 'hover:bg-[#e8e0d2]',
+      iconColor: 'text-[#cc785c]',
+    },
+    {
+      id: 'zipgaja' as PageType,
+      label: '집가자!',
+      sub: '안국역 & 버스 정보',
+      icon: Bus,
+      bgColor: 'bg-[#efe9de]',
+      hoverColor: 'hover:bg-[#e8e0d2]',
+      iconColor: 'text-[#cc785c]',
+    },
+    {
+      id: 'igoeitna' as PageType,
+      label: '이거있나?',
+      sub: '모바일 앱 & 웹 링크',
+      icon: AppWindow,
       bgColor: 'bg-[#efe9de]',
       hoverColor: 'hover:bg-[#e8e0d2]',
       iconColor: 'text-[#cc785c]',

@@ -7,9 +7,11 @@ import { SiteInfo } from './components/SiteInfo';
 import { LottoQuote } from './components/LottoQuote';
 import { FileTransfer } from './components/FileTransfer';
 import { MemoAndJapanese } from './components/MemoAndJapanese';
+import { ZipGaja } from './components/ZipGaja';
+import { IgoeItNa } from './components/IgoeItNa';
 import { PageType, ThinkTab } from './types';
 
-const VALID_PAGES: PageType[] = ['home', 'bob', 'news', 'site', 'lotto', 'transfer', 'memo'];
+const VALID_PAGES: PageType[] = ['home', 'bob', 'news', 'site', 'lotto', 'transfer', 'memo', 'zipgaja', 'igoeitna'];
 
 function getInitialPage(): PageType {
   const hash = window.location.hash.replace('#', '') as PageType;
@@ -88,6 +90,8 @@ export function App() {
           <FileTransfer onRegisterRefresh={handleRegisterTransferRefresh} />
         )}
         {currentPage === 'memo' && <MemoAndJapanese thinkTab={thinkTab} />}
+        {currentPage === 'zipgaja' && <ZipGaja />}
+        {currentPage === 'igoeitna' && <IgoeItNa />}
       </main>
 
       {/* STRICT RULE: NO FOOTERS ON ANY PAGE */}
