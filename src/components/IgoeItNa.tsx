@@ -53,22 +53,6 @@ export const IgoeItNa: React.FC = () => {
 
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-4 space-y-6">
-      {/* Page Header */}
-      <div className="bg-[#efe9de] border border-[#e6dfd8] p-4 rounded-2xl shadow-xs">
-        <div className="flex items-center gap-2.5 mb-1">
-          <div className="p-2 rounded-xl bg-[#cc785c] text-white">
-            <AppWindow className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-[18px] font-extrabold text-[#141413] tracking-tight">
-              이거있나?
-            </h1>
-            <p className="text-[12px] text-[#6c6a64]">
-              사내 주요 모바일 어플리케이션 및 모바일 웹 링크 바로가기
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* ========================================================================= */}
       {/* 1. 모바일 어플                                                            */}
