@@ -8,6 +8,7 @@ interface HeaderProps {
   onThinkTabChange?: (tab: ThinkTab) => void;
   onLottoRefresh?: () => void;
   onTransferRefresh?: () => void;
+  onZipGajaRefresh?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -17,6 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   onThinkTabChange,
   onLottoRefresh,
   onTransferRefresh,
+  onZipGajaRefresh,
 }) => {
   // Format today's date in Seoul Time (e.g., "2026년 10월 1일 (목)")
   const getTodayFormatted = () => {
@@ -116,6 +118,17 @@ export const Header: React.FC<HeaderProps> = ({
             title="새로고침"
           >
             <span className="text-[11px]">새로고침</span>
+            <RefreshCw className="w-3.5 h-3.5 text-[#cc785c]" />
+          </button>
+        )}
+
+        {currentPage === 'zipgaja' && onZipGajaRefresh && (
+          <button
+            onClick={onZipGajaRefresh}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[12px] font-semibold text-[#141413] bg-[#efe9de] hover:bg-[#e8e0d2] border border-[#e6dfd8] transition-colors cursor-pointer shrink-0 active:scale-95"
+            title="전체 갱신"
+          >
+            <span className="text-[11px]">전체 갱신</span>
             <RefreshCw className="w-3.5 h-3.5 text-[#cc785c]" />
           </button>
         )}

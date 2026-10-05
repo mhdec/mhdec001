@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, ChevronDown, ChevronUp, Clock, Bus, Train, AlertCircle, ShieldCheck } from 'lucide-react';
+import { RefreshCw, ChevronDown, ChevronUp, Clock, Bus, AlertCircle, ShieldCheck } from 'lucide-react';
 import { getBusServiceKey, getSubwayServiceKey, SERVICE_EXPIRATION_DATE } from '../utils/crypto';
 
 interface SubwayArrival {
@@ -22,6 +22,17 @@ interface BusArrival {
   arrmsg2: string; // 2nd bus arrival message e.g. "11분21초후[4번째 전]"
   stationNm1?: string;
   stationNm2?: string;
+  traTime1?: number;
+}
+
+interface ZipGajaProps {
+  onRegisterRefresh?: (fn: () => void) => void;
+}
+
+interface SoonestBusItem {
+  rtNm: string;
+  arrmsg: string;
+  seconds: number;
 }
 
 /**
@@ -61,27 +72,64 @@ function getBusNumberStyle(rtNm: string): string {
 }
 
 /**
- * Extract numerical arrival estimate for sorting or summary
+ * Parse arrival estimate in seconds
+ * Returns number of seconds remaining (0 for "곧 도착")
  */
-function getSoonestBusText(buses: BusArrival[]): string {
-  if (!buses || buses.length === 0) return '도착 예정 정보 없음';
-  
-  // Find bus with '곧 도착' or shortest arrival msg
-  const arriving = buses.find(b => b.arrmsg1 && b.arrmsg1.includes('곧'));
-  if (arriving) {
-    return `${arriving.rtNm}번 (${arriving.arrmsg1})`;
+function parseBusArrivalSeconds(arrmsg: string, traTime?: number): number {
+  if (!arrmsg || arrmsg === '출발대기') return Infinity;
+  if (arrmsg.includes('곧') || arrmsg.includes('진입')) {
+    return 0;
   }
 
-  // Otherwise return first sorted bus arrival
-  const valid = buses.filter(b => b.arrmsg1 && b.arrmsg1 !== '출발대기');
-  if (valid.length > 0) {
-    return `${valid[0].rtNm}번 (${valid[0].arrmsg1})`;
+  const minMatch = arrmsg.match(/(\d+)\s*분/);
+  const secMatch = arrmsg.match(/(\d+)\s*초/);
+
+  if (minMatch || secMatch) {
+    const mins = minMatch ? parseInt(minMatch[1], 10) : 0;
+    const secs = secMatch ? parseInt(secMatch[1], 10) : 0;
+    return mins * 60 + secs;
   }
 
-  return buses[0] ? `${buses[0].rtNm}번 (${buses[0].arrmsg1 || '운행 정보 없음'})` : '운행 중인 버스 없음';
+  if (typeof traTime === 'number' && traTime > 0) {
+    return traTime;
+  }
+
+  return Infinity;
 }
 
-export const ZipGaja: React.FC = () => {
+/**
+ * Format short arrival string e.g. "1분20초후[1번째 전]" -> "1분 20초후"
+ */
+function formatBusShortMsg(arrmsg: string): string {
+  if (!arrmsg) return '';
+  if (arrmsg.includes('곧') || arrmsg.includes('진입')) return '곧 도착';
+  return arrmsg.replace(/\[.*?\]/g, '').trim();
+}
+
+/**
+ * Extract buses arriving in under 2 minutes (< 120 seconds), max 3, sorted by shortest time
+ */
+function getSoonestBusesUnder2Min(buses: BusArrival[]): SoonestBusItem[] {
+  if (!buses || buses.length === 0) return [];
+
+  const list: SoonestBusItem[] = [];
+
+  for (const b of buses) {
+    const sec = parseBusArrivalSeconds(b.arrmsg1, b.traTime1);
+    if (sec < 120) {
+      list.push({
+        rtNm: b.rtNm,
+        arrmsg: formatBusShortMsg(b.arrmsg1),
+        seconds: sec,
+      });
+    }
+  }
+
+  list.sort((a, b) => a.seconds - b.seconds);
+  return list.slice(0, 3);
+}
+
+export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
   // State for Anguk Subway
   const [subwayData, setSubwayData] = useState<SubwayArrival[]>([]);
   const [subwayTime, setSubwayTime] = useState<string>('');
@@ -187,6 +235,7 @@ export const ZipGaja: React.FC = () => {
           arrmsg2: item.arrmsg2 || '',
           stationNm1: item.stationNm1,
           stationNm2: item.stationNm2,
+          traTime1: item.traTime1 ? parseInt(item.traTime1, 10) : undefined,
         }))
         .sort((a, b) => a.rtNm.localeCompare(b.rtNm, undefined, { numeric: true, sensitivity: 'base' }));
 
@@ -218,6 +267,13 @@ export const ZipGaja: React.FC = () => {
     fetchBusData('100000103', setAcrossBuses, setAcrossTime, setAcrossLoading, setAcrossError);
   }, [fetchSubwayData, fetchBusData]);
 
+  // Register refresh handler to parent Header
+  useEffect(() => {
+    if (onRegisterRefresh) {
+      onRegisterRefresh(refreshAll);
+    }
+  }, [onRegisterRefresh, refreshAll]);
+
   // Initial Load & 10-Second Auto Refresh Interval
   useEffect(() => {
     refreshAll();
@@ -233,24 +289,12 @@ export const ZipGaja: React.FC = () => {
   const subwayUpbound = subwayData.filter(item => item.updnLine === '상행');
   const subwayDownbound = subwayData.filter(item => item.updnLine === '하행');
 
+  // Soonest buses under 2 minutes for Company Front & Across
+  const frontSoonest = getSoonestBusesUnder2Min(frontBuses);
+  const acrossSoonest = getSoonestBusesUnder2Min(acrossBuses);
+
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-4 space-y-5">
-      {/* Page Header / Expiration Alert Notice */}
-      <div className="flex items-center justify-between bg-[#efe9de] border border-[#e6dfd8] px-3.5 py-2 rounded-xl text-[12px] text-[#6c6a64]">
-        <div className="flex items-center gap-1.5 font-medium">
-          <ShieldCheck className="w-4 h-4 text-[#cc785c]" />
-          <span>API 서비스 유효기간: <strong className="text-[#141413]">{SERVICE_EXPIRATION_DATE}</strong>까지</span>
-        </div>
-        <button
-          onClick={refreshAll}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#faf9f5] hover:bg-white border border-[#e6dfd8] text-[11px] font-semibold text-[#cc785c] active:scale-95 transition-all cursor-pointer"
-          title="전체 새로고침"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${subwayLoading || frontLoading || acrossLoading ? 'animate-spin' : ''}`} />
-          <span>전체 갱신</span>
-        </button>
-      </div>
-
       {/* ========================================================================= */}
       {/* 1. 안국역 (Subway Line 3 - Naver Map Style UI)                            */}
       {/* ========================================================================= */}
@@ -264,7 +308,9 @@ export const ZipGaja: React.FC = () => {
             <div className="min-w-0">
               <h2 className="text-[18px] font-extrabold tracking-tight flex items-center gap-1.5 whitespace-nowrap">
                 안국역
-                <span className="text-[11px] font-medium bg-white/20 px-2 py-0.5 rounded-full whitespace-nowrap">3호선</span>
+                <span className="text-[11px] font-medium bg-white/20 px-2 py-0.5 rounded-full whitespace-nowrap font-['Nanum_Gothic','NanumGothic','Malgun_Gothic',sans-serif]">
+                  3호선
+                </span>
               </h2>
             </div>
           </div>
@@ -315,7 +361,7 @@ export const ZipGaja: React.FC = () => {
                       경복궁 / 대화 방면
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#6c6a64]">3호선</span>
+                  <span className="text-[10px] text-[#6c6a64] font-['Nanum_Gothic','NanumGothic',sans-serif]">3호선</span>
                 </div>
 
                 {subwayUpbound.length === 0 ? (
@@ -375,7 +421,7 @@ export const ZipGaja: React.FC = () => {
                       종로3가 / 오금 방면
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#6c6a64]">3호선</span>
+                  <span className="text-[10px] text-[#6c6a64] font-['Nanum_Gothic','NanumGothic',sans-serif]">3호선</span>
                 </div>
 
                 {subwayDownbound.length === 0 ? (
@@ -484,15 +530,28 @@ export const ZipGaja: React.FC = () => {
           </div>
         </div>
 
-        {/* Soonest Arriving Bus Banner (ALWAYS VISIBLE EVEN WHEN COLLAPSED) */}
-        <div className="bg-[#f5f0e8] px-4 py-2 border-b border-[#e6dfd8] flex items-center justify-between gap-2 text-[12px]">
+        {/* Soonest Arriving Bus Banner (Buses under 2 minutes, max 3, sorted by shortest time) */}
+        <div className="bg-[#f5f0e8] px-3.5 py-2 border-b border-[#e6dfd8] flex items-center justify-between gap-2 text-[12px] flex-wrap">
           <span className="font-semibold text-[#141413] flex items-center gap-1.5 shrink-0 whitespace-nowrap">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             곧 도착 버스:
           </span>
-          <span className="font-bold text-[#cc785c] bg-white px-2.5 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs truncate max-w-[200px] text-right whitespace-nowrap">
-            {getSoonestBusText(frontBuses)}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            {frontSoonest.length > 0 ? (
+              frontSoonest.map((b, idx) => (
+                <span
+                  key={idx}
+                  className="font-bold text-[#cc785c] bg-white px-2 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs text-[11px] whitespace-nowrap"
+                >
+                  {b.rtNm}번 ({b.arrmsg})
+                </span>
+              ))
+            ) : (
+              <span className="text-[#8e8b82] text-[11px] bg-white/70 px-2 py-0.5 rounded-md border border-[#e6dfd8]">
+                2분 이내 도착 예정 버스 없음
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Bus List Details (Collapsible Area) */}
@@ -598,15 +657,28 @@ export const ZipGaja: React.FC = () => {
           </div>
         </div>
 
-        {/* Soonest Arriving Bus Banner (ALWAYS VISIBLE EVEN WHEN COLLAPSED) */}
-        <div className="bg-[#f5f0e8] px-4 py-2 border-b border-[#e6dfd8] flex items-center justify-between gap-2 text-[12px]">
+        {/* Soonest Arriving Bus Banner (Buses under 2 minutes, max 3, sorted by shortest time) */}
+        <div className="bg-[#f5f0e8] px-3.5 py-2 border-b border-[#e6dfd8] flex items-center justify-between gap-2 text-[12px] flex-wrap">
           <span className="font-semibold text-[#141413] flex items-center gap-1.5 shrink-0 whitespace-nowrap">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             곧 도착 버스:
           </span>
-          <span className="font-bold text-[#5db8a6] bg-white px-2.5 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs truncate max-w-[200px] text-right whitespace-nowrap">
-            {getSoonestBusText(acrossBuses)}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            {acrossSoonest.length > 0 ? (
+              acrossSoonest.map((b, idx) => (
+                <span
+                  key={idx}
+                  className="font-bold text-[#5db8a6] bg-white px-2 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs text-[11px] whitespace-nowrap"
+                >
+                  {b.rtNm}번 ({b.arrmsg})
+                </span>
+              ))
+            ) : (
+              <span className="text-[#8e8b82] text-[11px] bg-white/70 px-2 py-0.5 rounded-md border border-[#e6dfd8]">
+                2분 이내 도착 예정 버스 없음
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Bus List Details (Collapsible Area) */}
@@ -655,6 +727,16 @@ export const ZipGaja: React.FC = () => {
           </div>
         )}
       </section>
+
+      {/* ========================================================================= */}
+      {/* 4. 화면 제일 하단: API 서비스 유효기간 안내                             */}
+      {/* ========================================================================= */}
+      <footer className="pt-2 pb-6 text-center">
+        <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#efe9de] border border-[#e6dfd8] text-[12px] text-[#6c6a64] shadow-2xs">
+          <ShieldCheck className="w-4 h-4 text-[#cc785c]" />
+          <span>API 서비스 유효기간: <strong className="text-[#141413] font-bold">{SERVICE_EXPIRATION_DATE}</strong>까지</span>
+        </div>
+      </footer>
     </div>
   );
 };

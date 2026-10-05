@@ -28,6 +28,7 @@ export function App() {
   const [thinkTab, setThinkTab] = useState<ThinkTab>('memo');
   const lottoRefreshRef = useRef<(() => void) | null>(null);
   const transferRefreshRef = useRef<(() => void) | null>(null);
+  const zipGajaRefreshRef = useRef<(() => void) | null>(null);
 
   const handleNavigate = (page: PageType) => {
     setCurrentPage(page);
@@ -65,6 +66,16 @@ export function App() {
     }
   };
 
+  const handleRegisterZipGajaRefresh = useCallback((fn: () => void) => {
+    zipGajaRefreshRef.current = fn;
+  }, []);
+
+  const handleTriggerZipGajaRefresh = () => {
+    if (zipGajaRefreshRef.current) {
+      zipGajaRefreshRef.current();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#faf9f5] text-[#141413] flex flex-col font-sans selection:bg-[#cc785c] selection:text-white">
       {/* 50px Max Height Header with Floating Home Button & Controls */}
@@ -75,6 +86,7 @@ export function App() {
         onThinkTabChange={setThinkTab}
         onLottoRefresh={handleTriggerLottoRefresh}
         onTransferRefresh={handleTriggerTransferRefresh}
+        onZipGajaRefresh={handleTriggerZipGajaRefresh}
       />
 
       {/* Main Page View Area */}
@@ -90,7 +102,9 @@ export function App() {
           <FileTransfer onRegisterRefresh={handleRegisterTransferRefresh} />
         )}
         {currentPage === 'memo' && <MemoAndJapanese thinkTab={thinkTab} />}
-        {currentPage === 'zipgaja' && <ZipGaja />}
+        {currentPage === 'zipgaja' && (
+          <ZipGaja onRegisterRefresh={handleRegisterZipGajaRefresh} />
+        )}
         {currentPage === 'igoeitna' && <IgoeItNa />}
       </main>
 
