@@ -27,10 +27,21 @@ export const onRequestOptions: PagesFunction<Env> = async () => {
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url);
-  const stId = url.searchParams.get('stId') || '100000076';
+  const arsId = url.searchParams.get('arsId');
+  const stId = url.searchParams.get('stId');
   const serviceKey = getBusServiceKey();
 
-  const targetUrl = `http://ws.bus.go.kr/api/rest/arrive/getLowArrInfoByStId?serviceKey=${serviceKey}&stId=${stId}&resultType=json`;
+  let targetUrl: string;
+  if (arsId) {
+    targetUrl = `http://ws.bus.go.kr/api/rest/stationinfo/getStationByUid?serviceKey=${serviceKey}&arsId=${arsId}&resultType=json`;
+  } else {
+    const targetArsId = stId === '100000076' ? '01172' : stId === '100000103' ? '01199' : null;
+    if (targetArsId) {
+      targetUrl = `http://ws.bus.go.kr/api/rest/stationinfo/getStationByUid?serviceKey=${serviceKey}&arsId=${targetArsId}&resultType=json`;
+    } else {
+      targetUrl = `http://ws.bus.go.kr/api/rest/arrive/getLowArrInfoByStId?serviceKey=${serviceKey}&stId=${stId || '100000076'}&resultType=json`;
+    }
+  }
 
   try {
     const res = await fetch(targetUrl);

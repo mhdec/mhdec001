@@ -18,11 +18,15 @@ interface BusArrival {
   stNm: string;
   arsId: string;
   rtNm: string; // Bus number e.g. "151"
-  arrmsg1: string; // 1st bus arrival message e.g. "곧 도착"
-  arrmsg2: string; // 2nd bus arrival message e.g. "11분21초후[4번째 전]"
+  rawArrmsg1: string; // 1st bus arrival message e.g. "3분 45초후[2번째 전]"
+  rawArrmsg2: string; // 2nd bus arrival message e.g. "11분 21초후[4번째 전]"
+  initialSec1: number;
+  initialSec2: number;
+  fetchTimestamp: number;
   stationNm1?: string;
   stationNm2?: string;
   traTime1?: number;
+  traTime2?: number;
 }
 
 interface ZipGajaProps {
@@ -31,8 +35,43 @@ interface ZipGajaProps {
 
 interface SoonestBusItem {
   rtNm: string;
-  arrmsg: string;
+  isSoon: boolean;
   seconds: number;
+}
+
+/**
+ * Extract buses arriving soon ('곧 도착' or remaining time < 120s), max 5
+ * Priority: '곧 도착' first, then sorted by shortest remaining time
+ */
+function getSoonestBusesUnder2Min(buses: BusArrival[], now: number): SoonestBusItem[] {
+  if (!buses || buses.length === 0) return [];
+
+  const list: SoonestBusItem[] = [];
+
+  for (const b of buses) {
+    if (b.rawArrmsg1 === '운행종료' || b.rawArrmsg1 === '출발대기') continue;
+
+    const elapsedSec = Math.floor((now - b.fetchTimestamp) / 1000);
+    const isSoon = b.rawArrmsg1.includes('곧') || b.rawArrmsg1.includes('진입');
+    const remainingSec = b.initialSec1 - elapsedSec;
+
+    if (isSoon || (remainingSec >= 0 && remainingSec < 120)) {
+      list.push({
+        rtNm: b.rtNm,
+        isSoon: isSoon || remainingSec <= 0,
+        seconds: isSoon ? 0 : Math.max(0, remainingSec),
+      });
+    }
+  }
+
+  list.sort((a, b) => {
+    if (a.isSoon !== b.isSoon) {
+      return a.isSoon ? -1 : 1;
+    }
+    return a.seconds - b.seconds;
+  });
+
+  return list.slice(0, 5);
 }
 
 /**
@@ -72,11 +111,50 @@ function getBusNumberStyle(rtNm: string): string {
 }
 
 /**
+ * Extract effective arrival message by evaluating primary, secondary, and trajectory time
+ */
+function getEffectiveArrmsg(arrmsg?: string, arrmsgSec?: string, traTime?: number): string {
+  const primary = (arrmsg || '').trim();
+  const secondary = (arrmsgSec || '').trim();
+
+  // If status is 운행종료, prioritize 운행종료 status
+  if (primary.includes('종료') || secondary.includes('종료')) {
+    return '운행종료';
+  }
+
+  if (primary && (primary.includes('분') || primary.includes('초') || primary.includes('곧') || primary.includes('진입'))) {
+    return primary;
+  }
+  if (secondary && (secondary.includes('분') || secondary.includes('초') || secondary.includes('곧') || secondary.includes('진입'))) {
+    return secondary;
+  }
+
+  // If status is 출발대기
+  if (primary.includes('대기') || secondary.includes('대기')) {
+    return '출발대기';
+  }
+
+  if (typeof traTime === 'number' && traTime > 0) {
+    const m = Math.floor(traTime / 60);
+    const s = traTime % 60;
+    if (m > 0) {
+      return `${m}분 ${s}초후`;
+    } else {
+      return `${s}초후`;
+    }
+  }
+
+  if (primary) return primary;
+  if (secondary) return secondary;
+  return '정보 없음';
+}
+
+/**
  * Parse arrival estimate in seconds
  * Returns number of seconds remaining (0 for "곧 도착")
  */
 function parseBusArrivalSeconds(arrmsg: string, traTime?: number): number {
-  if (!arrmsg || arrmsg === '출발대기') return Infinity;
+  if (!arrmsg) return Infinity;
   if (arrmsg.includes('곧') || arrmsg.includes('진입')) {
     return 0;
   }
@@ -94,56 +172,68 @@ function parseBusArrivalSeconds(arrmsg: string, traTime?: number): number {
     return traTime;
   }
 
+  if (arrmsg === '출발대기' || arrmsg === '운행종료') {
+    return Infinity;
+  }
+
   return Infinity;
 }
 
 /**
- * Format short arrival string e.g. "1분20초후[1번째 전]" -> "1분 20초후"
+ * Format countdown arrival message based on initial seconds, elapsed time, and original raw message
  */
-function formatBusShortMsg(arrmsg: string): string {
-  if (!arrmsg) return '';
-  if (arrmsg.includes('곧') || arrmsg.includes('진입')) return '곧 도착';
-  return arrmsg.replace(/\[.*?\]/g, '').trim();
-}
+function formatBusCountdownMsg(initialSec: number, elapsedSec: number, rawMsg: string): string {
+  if (!rawMsg) return '정보 없음';
+  if (rawMsg === '운행종료' || rawMsg === '출발대기') return rawMsg;
+  if (rawMsg.includes('곧') || rawMsg.includes('진입')) return '곧 도착';
+  if (initialSec === Infinity || Number.isNaN(initialSec)) return rawMsg;
 
-/**
- * Extract buses arriving in under 2 minutes (< 120 seconds), max 3, sorted by shortest time
- */
-function getSoonestBusesUnder2Min(buses: BusArrival[]): SoonestBusItem[] {
-  if (!buses || buses.length === 0) return [];
-
-  const list: SoonestBusItem[] = [];
-
-  for (const b of buses) {
-    const sec = parseBusArrivalSeconds(b.arrmsg1, b.traTime1);
-    if (sec < 120) {
-      list.push({
-        rtNm: b.rtNm,
-        arrmsg: formatBusShortMsg(b.arrmsg1),
-        seconds: sec,
-      });
-    }
+  const currentRemaining = initialSec - elapsedSec;
+  if (currentRemaining <= 0) {
+    return '곧 도착';
   }
 
-  list.sort((a, b) => a.seconds - b.seconds);
-  return list.slice(0, 3);
+  const bracketMatch = rawMsg.match(/\[.*?\]/);
+  const suffix = bracketMatch ? bracketMatch[0] : '';
+
+  const m = Math.floor(currentRemaining / 60);
+  const s = currentRemaining % 60;
+
+  if (m > 0) {
+    return `${m}분 ${s}초후${suffix}`;
+  } else {
+    return `${s}초후${suffix}`;
+  }
 }
 
+
+
 export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
+  // Current time ticker for continuous 1-second countdown
+  const [now, setNow] = useState<number>(Date.now());
+
+  useEffect(() => {
+    const ticker = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => clearInterval(ticker);
+  }, []);
+
   // State for Anguk Subway
   const [subwayData, setSubwayData] = useState<SubwayArrival[]>([]);
   const [subwayTime, setSubwayTime] = useState<string>('');
   const [subwayLoading, setSubwayLoading] = useState<boolean>(false);
   const [subwayError, setSubwayError] = useState<string | null>(null);
 
-  // State for Company Front Stop (100000076)
+  // State for Company Front Stop (ARS ID: 01172)
   const [frontBuses, setFrontBuses] = useState<BusArrival[]>([]);
   const [frontTime, setFrontTime] = useState<string>('');
   const [frontLoading, setFrontLoading] = useState<boolean>(false);
   const [frontCollapsed, setFrontCollapsed] = useState<boolean>(false);
   const [frontError, setFrontError] = useState<string | null>(null);
 
-  // State for Company Across Stop (100000103)
+  // State for Company Across Stop (ARS ID: 01199)
   const [acrossBuses, setAcrossBuses] = useState<BusArrival[]>([]);
   const [acrossTime, setAcrossTime] = useState<string>('');
   const [acrossLoading, setAcrossLoading] = useState<boolean>(false);
@@ -190,8 +280,8 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
     }
   }, []);
 
-  // Fetch Bus Stop Data (Company Front or Across)
-  const fetchBusData = useCallback(async (stId: string, setBuses: React.Dispatch<React.SetStateAction<BusArrival[]>>, setTime: React.Dispatch<React.SetStateAction<string>>, setLoading: React.Dispatch<React.SetStateAction<boolean>>, setError: React.Dispatch<React.SetStateAction<string | null>>) => {
+  // Fetch Bus Stop Data by ARS ID (Company Front or Across)
+  const fetchBusData = useCallback(async (arsId: string, setBuses: React.Dispatch<React.SetStateAction<BusArrival[]>>, setTime: React.Dispatch<React.SetStateAction<string>>, setLoading: React.Dispatch<React.SetStateAction<boolean>>, setError: React.Dispatch<React.SetStateAction<string | null>>) => {
     setLoading(true);
     setError(null);
     try {
@@ -199,8 +289,9 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
 
       // Try Cloudflare Function proxy first
       try {
-        const res = await fetch(`/api/bus?stId=${stId}`);
-        if (res.ok) {
+        const res = await fetch(`/api/bus?arsId=${arsId}`);
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
           const json: any = await res.json();
           if (json?.msgBody?.itemList) {
             rawItems = Array.isArray(json.msgBody.itemList) ? json.msgBody.itemList : [json.msgBody.itemList];
@@ -214,7 +305,7 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
 
       if (rawItems.length === 0) {
         const key = getBusServiceKey();
-        const fallbackUrl = `http://ws.bus.go.kr/api/rest/arrive/getLowArrInfoByStId?serviceKey=${key}&stId=${stId}&resultType=json`;
+        const fallbackUrl = `http://ws.bus.go.kr/api/rest/stationinfo/getStationByUid?serviceKey=${key}&arsId=${arsId}&resultType=json`;
         const res = await fetch(fallbackUrl);
         const json: any = await res.json();
 
@@ -224,25 +315,36 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
         }
       }
 
-      // Sort bus routes in ascending order by route number (버스번호 오름차순 정렬)
-      const sorted = rawItems
-        .map((item: any) => ({
-          stId: item.stId,
-          stNm: item.stNm,
-          arsId: item.arsId,
-          rtNm: item.rtNm || item.busRouteAbrv || '',
-          arrmsg1: item.arrmsg1 || '',
-          arrmsg2: item.arrmsg2 || '',
-          stationNm1: item.stationNm1,
-          stationNm2: item.stationNm2,
-          traTime1: item.traTime1 ? parseInt(item.traTime1, 10) : undefined,
-        }))
+      const fetchTs = Date.now();
+      const sorted: BusArrival[] = rawItems
+        .map((item: any) => {
+          const traTime1 = item.traTime1 ? parseInt(item.traTime1, 10) : undefined;
+          const traTime2 = item.traTime2 ? parseInt(item.traTime2, 10) : undefined;
+          const rawArrmsg1 = getEffectiveArrmsg(item.arrmsg1, item.arrmsgSec1, traTime1);
+          const rawArrmsg2 = getEffectiveArrmsg(item.arrmsg2, item.arrmsgSec2, traTime2);
+
+          return {
+            stId: item.stId,
+            stNm: item.stNm,
+            arsId: item.arsId,
+            rtNm: item.rtNm || item.busRouteAbrv || '',
+            rawArrmsg1,
+            rawArrmsg2,
+            initialSec1: parseBusArrivalSeconds(rawArrmsg1, traTime1),
+            initialSec2: parseBusArrivalSeconds(rawArrmsg2, traTime2),
+            fetchTimestamp: fetchTs,
+            stationNm1: item.stationNm1,
+            stationNm2: item.stationNm2,
+            traTime1,
+            traTime2,
+          };
+        })
         .sort((a, b) => a.rtNm.localeCompare(b.rtNm, undefined, { numeric: true, sensitivity: 'base' }));
 
       setBuses(sorted);
       setTime(formatAmPm());
     } catch (err: any) {
-      console.error(`Bus Fetch Error (${stId}):`, err);
+      console.error(`Bus Fetch Error (${arsId}):`, err);
       setError('버스 도착 정보를 불러오는 중 오류가 발생했습니다.');
       setTime(formatAmPm());
     } finally {
@@ -252,19 +354,19 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
 
   // Handler for individual Company Front refresh
   const handleFrontRefresh = () => {
-    fetchBusData('100000076', setFrontBuses, setFrontTime, setFrontLoading, setFrontError);
+    fetchBusData('01172', setFrontBuses, setFrontTime, setFrontLoading, setFrontError);
   };
 
   // Handler for individual Company Across refresh
   const handleAcrossRefresh = () => {
-    fetchBusData('100000103', setAcrossBuses, setAcrossTime, setAcrossLoading, setAcrossError);
+    fetchBusData('01199', setAcrossBuses, setAcrossTime, setAcrossLoading, setAcrossError);
   };
 
   // Global Refresh all 3
   const refreshAll = useCallback(() => {
     fetchSubwayData();
-    fetchBusData('100000076', setFrontBuses, setFrontTime, setFrontLoading, setFrontError);
-    fetchBusData('100000103', setAcrossBuses, setAcrossTime, setAcrossLoading, setAcrossError);
+    fetchBusData('01172', setFrontBuses, setFrontTime, setFrontLoading, setFrontError);
+    fetchBusData('01199', setAcrossBuses, setAcrossTime, setAcrossLoading, setAcrossError);
   }, [fetchSubwayData, fetchBusData]);
 
   // Register refresh handler to parent Header
@@ -290,8 +392,8 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
   const subwayDownbound = subwayData.filter(item => item.updnLine === '하행');
 
   // Soonest buses under 2 minutes for Company Front & Across
-  const frontSoonest = getSoonestBusesUnder2Min(frontBuses);
-  const acrossSoonest = getSoonestBusesUnder2Min(acrossBuses);
+  const frontSoonest = getSoonestBusesUnder2Min(frontBuses, now);
+  const acrossSoonest = getSoonestBusesUnder2Min(acrossBuses, now);
 
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-4 space-y-5">
@@ -474,7 +576,7 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. 회사앞 정류장 (stID: 100000076, ARS_ID: 01172)                         */}
+      {/* 2. 회사앞 정류장 (ARS_ID: 01172)                                           */}
       {/* ========================================================================= */}
       <section className="bg-white rounded-2xl border border-[#e6dfd8] shadow-xs overflow-hidden transition-all">
         {/* Header */}
@@ -529,27 +631,21 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
           </div>
         </div>
 
-        {/* Soonest Arriving Bus Banner (Buses under 2 minutes, max 3, sorted by shortest time) */}
-        <div className="bg-[#f5f0e8] px-3.5 py-2 border-b border-[#e6dfd8] flex items-center justify-between gap-2 text-[12px] flex-wrap">
+        {/* Soonest Arriving Bus Banner (Buses under 2 minutes, max 5, '곧 도착' first) */}
+        <div className="bg-[#f5f0e8] px-3.5 py-2 border-b border-[#e6dfd8] flex items-center justify-between gap-2 text-[12px] flex-wrap min-h-[36px]">
           <span className="font-semibold text-[#141413] flex items-center gap-1.5 shrink-0 whitespace-nowrap">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             곧 도착 버스:
           </span>
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            {frontSoonest.length > 0 ? (
-              frontSoonest.map((b, idx) => (
-                <span
-                  key={idx}
-                  className="font-bold text-[#cc785c] bg-white px-2 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs text-[11px] whitespace-nowrap"
-                >
-                  {b.rtNm}번 ({b.arrmsg})
-                </span>
-              ))
-            ) : (
-              <span className="text-[#8e8b82] text-[11px] bg-white/70 px-2 py-0.5 rounded-md border border-[#e6dfd8]">
-                2분 이내 도착 예정 버스 없음
+            {frontSoonest.map((b, idx) => (
+              <span
+                key={idx}
+                className="font-bold text-[#cc785c] bg-white px-2.5 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs text-[11px] whitespace-nowrap"
+              >
+                {b.rtNm}
               </span>
-            )}
+            ))}
           </div>
         </div>
 
@@ -568,32 +664,38 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
             ) : (
               <div className="space-y-2.5">
                 <div className="text-[11px] text-[#6c6a64] flex justify-between px-1">
-                  <span>버스 번호 (오름차순 정렬)</span>
+                  <span>버스 번호</span>
                   <span>도착 예정 시간</span>
                 </div>
-                {frontBuses.map((bus) => (
-                  <div
-                    key={bus.rtNm}
-                    className="bg-[#faf9f5] rounded-xl p-3 border border-[#e6dfd8] flex items-center justify-between hover:border-[#cc785c] transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`text-[17px] tracking-tight ${getBusNumberStyle(bus.rtNm)}`}>
-                        {bus.rtNm}
-                      </span>
-                    </div>
+                {frontBuses.map((bus) => {
+                  const elapsedSec = Math.floor((now - bus.fetchTimestamp) / 1000);
+                  const msg1 = formatBusCountdownMsg(bus.initialSec1, elapsedSec, bus.rawArrmsg1);
+                  const msg2 = formatBusCountdownMsg(bus.initialSec2, elapsedSec, bus.rawArrmsg2);
 
-                    <div className="text-right space-y-0.5">
-                      <div className="text-[13px] font-bold text-[#141413]">
-                        {bus.arrmsg1 || '정보 없음'}
+                  return (
+                    <div
+                      key={bus.rtNm}
+                      className="bg-[#faf9f5] rounded-xl p-3 border border-[#e6dfd8] flex items-center justify-between hover:border-[#cc785c] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[17px] tracking-tight ${getBusNumberStyle(bus.rtNm)}`}>
+                          {bus.rtNm}
+                        </span>
                       </div>
-                      {bus.arrmsg2 && (
-                        <div className="text-[11px] text-[#6c6a64]">
-                          다음: {bus.arrmsg2}
+
+                      <div className="text-right space-y-0.5">
+                        <div className="text-[13px] font-bold text-[#141413]">
+                          {msg1}
                         </div>
-                      )}
+                        {bus.rawArrmsg2 && (
+                          <div className="text-[11px] text-[#6c6a64]">
+                            다음: {msg2}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -601,7 +703,7 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
       </section>
 
       {/* ========================================================================= */}
-      {/* 3. 회사 건너편 정류장 (stID: 100000103, ARS_ID: 01199)                    */}
+      {/* 3. 회사 건너편 정류장 (ARS_ID: 01199)                                     */}
       {/* ========================================================================= */}
       <section className="bg-white rounded-2xl border border-[#e6dfd8] shadow-xs overflow-hidden transition-all">
         {/* Header */}
@@ -656,27 +758,21 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
           </div>
         </div>
 
-        {/* Soonest Arriving Bus Banner (Buses under 2 minutes, max 3, sorted by shortest time) */}
-        <div className="bg-[#f5f0e8] px-3.5 py-2 border-b border-[#e6dfd8] flex items-center justify-between gap-2 text-[12px] flex-wrap">
+        {/* Soonest Arriving Bus Banner (Buses under 2 minutes, max 5, '곧 도착' first) */}
+        <div className="bg-[#f5f0e8] px-3.5 py-2 border-b border-[#e6dfd8] flex items-center justify-between gap-2 text-[12px] flex-wrap min-h-[36px]">
           <span className="font-semibold text-[#141413] flex items-center gap-1.5 shrink-0 whitespace-nowrap">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             곧 도착 버스:
           </span>
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            {acrossSoonest.length > 0 ? (
-              acrossSoonest.map((b, idx) => (
-                <span
-                  key={idx}
-                  className="font-bold text-[#5db8a6] bg-white px-2 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs text-[11px] whitespace-nowrap"
-                >
-                  {b.rtNm}번 ({b.arrmsg})
-                </span>
-              ))
-            ) : (
-              <span className="text-[#8e8b82] text-[11px] bg-white/70 px-2 py-0.5 rounded-md border border-[#e6dfd8]">
-                2분 이내 도착 예정 버스 없음
+            {acrossSoonest.map((b, idx) => (
+              <span
+                key={idx}
+                className="font-bold text-[#5db8a6] bg-white px-2.5 py-0.5 rounded-full border border-[#e6dfd8] shadow-2xs text-[11px] whitespace-nowrap"
+              >
+                {b.rtNm}
               </span>
-            )}
+            ))}
           </div>
         </div>
 
@@ -695,32 +791,38 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
             ) : (
               <div className="space-y-2.5">
                 <div className="text-[11px] text-[#6c6a64] flex justify-between px-1">
-                  <span>버스 번호 (오름차순 정렬)</span>
+                  <span>버스 번호</span>
                   <span>도착 예정 시간</span>
                 </div>
-                {acrossBuses.map((bus) => (
-                  <div
-                    key={bus.rtNm}
-                    className="bg-[#faf9f5] rounded-xl p-3 border border-[#e6dfd8] flex items-center justify-between hover:border-[#5db8a6] transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`text-[17px] tracking-tight ${getBusNumberStyle(bus.rtNm)}`}>
-                        {bus.rtNm}
-                      </span>
-                    </div>
+                {acrossBuses.map((bus) => {
+                  const elapsedSec = Math.floor((now - bus.fetchTimestamp) / 1000);
+                  const msg1 = formatBusCountdownMsg(bus.initialSec1, elapsedSec, bus.rawArrmsg1);
+                  const msg2 = formatBusCountdownMsg(bus.initialSec2, elapsedSec, bus.rawArrmsg2);
 
-                    <div className="text-right space-y-0.5">
-                      <div className="text-[13px] font-bold text-[#141413]">
-                        {bus.arrmsg1 || '정보 없음'}
+                  return (
+                    <div
+                      key={bus.rtNm}
+                      className="bg-[#faf9f5] rounded-xl p-3 border border-[#e6dfd8] flex items-center justify-between hover:border-[#5db8a6] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[17px] tracking-tight ${getBusNumberStyle(bus.rtNm)}`}>
+                          {bus.rtNm}
+                        </span>
                       </div>
-                      {bus.arrmsg2 && (
-                        <div className="text-[11px] text-[#6c6a64]">
-                          다음: {bus.arrmsg2}
+
+                      <div className="text-right space-y-0.5">
+                        <div className="text-[13px] font-bold text-[#141413]">
+                          {msg1}
                         </div>
-                      )}
+                        {bus.rawArrmsg2 && (
+                          <div className="text-[11px] text-[#6c6a64]">
+                            다음: {msg2}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

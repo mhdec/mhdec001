@@ -2,7 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
-const BUS_SERVICE_KEY = 'c65750a1369241e6020f54ad5643780b7fa31cdaf315dda332723022d8145f5e';
+const ENCODED_BUS_KEY = 'YzY1NzUwYTEzNjkyNDFlNjAyMGY1NGFkNTY0Mzc4MGI3ZmEzMWNkYWYzMTVkZGEzMzI3MjMwMjJkODE0NWY1ZQ==';
+const BUS_SERVICE_KEY = Buffer.from(ENCODED_BUS_KEY, 'base64').toString('utf-8');
 const SUBWAY_SERVICE_KEY = '67585365716c62653635714e6c7652';
 
 // https://vite.dev/config/
@@ -17,8 +18,16 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => {
           const url = new URL(path, 'http://localhost');
-          const stId = url.searchParams.get('stId') || '100000076';
-          return `/api/rest/arrive/getLowArrInfoByStId?serviceKey=${BUS_SERVICE_KEY}&stId=${stId}&resultType=json`;
+          const arsId = url.searchParams.get('arsId');
+          const stId = url.searchParams.get('stId');
+          if (arsId) {
+            return `/api/rest/stationinfo/getStationByUid?serviceKey=${BUS_SERVICE_KEY}&arsId=${arsId}&resultType=json`;
+          }
+          const targetArsId = stId === '100000076' ? '01172' : stId === '100000103' ? '01199' : null;
+          if (targetArsId) {
+            return `/api/rest/stationinfo/getStationByUid?serviceKey=${BUS_SERVICE_KEY}&arsId=${targetArsId}&resultType=json`;
+          }
+          return `/api/rest/arrive/getLowArrInfoByStId?serviceKey=${BUS_SERVICE_KEY}&stId=${stId || '100000076'}&resultType=json`;
         },
       },
       '/api/subway': {
