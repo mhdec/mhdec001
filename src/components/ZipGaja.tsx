@@ -113,13 +113,23 @@ function parseRecptnDt(dtStr?: string): number {
 function getCompensatedSubwayMsg(item: SubwayArrival, now: number): string {
   if (!item) return '';
 
+  const cleanMsg = formatSubwayArvlMsg(item.arvlMsg2);
+
+  // If train is already at target station or entering target station
+  if (item.arvlCd === '1' || cleanMsg.includes('안국 도착') || cleanMsg === '도착') {
+    return '안국 도착';
+  }
+  if (item.arvlCd === '0' || cleanMsg.includes('안국 진입') || cleanMsg === '진입') {
+    return '안국 진입';
+  }
+
   const recptnTime = parseRecptnDt(item.recptnDt);
   const elapsedSec = Math.max(0, Math.floor((now - recptnTime) / 1000));
 
   let initialSec = NaN;
-  if (item.barvlDt) {
+  if (item.barvlDt !== undefined && item.barvlDt !== null && item.barvlDt !== '') {
     const parsedBarvl = parseInt(item.barvlDt, 10);
-    if (!isNaN(parsedBarvl) && parsedBarvl > 0) {
+    if (!isNaN(parsedBarvl) && parsedBarvl >= 0) {
       initialSec = parsedBarvl;
     }
   }
@@ -137,10 +147,29 @@ function getCompensatedSubwayMsg(item: SubwayArrival, now: number): string {
   if (!isNaN(initialSec)) {
     const adjustedSec = initialSec - elapsedSec;
     if (adjustedSec <= 0) {
-      return '도착';
+      return '안국 도착';
     }
+
     const m = Math.floor(adjustedSec / 60);
     const s = adjustedSec % 60;
+
+    // If original msg was 'X분 Y초 후'
+    if (cleanMsg.includes('분') || cleanMsg.includes('초')) {
+      if (m > 0) {
+        return `${m}분 ${s}초 후`;
+      } else {
+        return `${s}초 후`;
+      }
+    }
+
+    // If original msg was '전역 출발/도착/진입'
+    if (cleanMsg.includes('전역')) {
+      if (adjustedSec < 60) {
+        return `${s}초 후`;
+      }
+      return cleanMsg;
+    }
+
     if (m > 0) {
       return `${m}분 ${s}초 후`;
     } else {
@@ -148,15 +177,7 @@ function getCompensatedSubwayMsg(item: SubwayArrival, now: number): string {
     }
   }
 
-  const cleanMsg = formatSubwayArvlMsg(item.arvlMsg2);
-  if (cleanMsg.includes('도착') || cleanMsg.includes('진입')) {
-    return cleanMsg;
-  }
-  if (cleanMsg.includes('전역') && elapsedSec >= 45) {
-    return '진입';
-  }
-
-  return cleanMsg;
+  return cleanMsg || '운행 중';
 }
 
 /**
