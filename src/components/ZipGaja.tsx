@@ -266,6 +266,7 @@ function parseBusArrivalSeconds(arrmsg: string, traTime?: number): number {
 
 /**
  * Format countdown arrival message based on initial seconds, elapsed time, and original raw message
+ * Preserves 'mm분 ss초후' and 'ss초후' format even for arrival times under 2 minutes
  */
 function formatBusCountdownMsg(initialSec: number, elapsedSec: number, rawMsg: string): string {
   if (!rawMsg) return '정보 없음';
@@ -273,10 +274,7 @@ function formatBusCountdownMsg(initialSec: number, elapsedSec: number, rawMsg: s
   if (rawMsg.includes('곧') || rawMsg.includes('진입')) return '곧 도착';
   if (initialSec === Infinity || Number.isNaN(initialSec)) return rawMsg;
 
-  const currentRemaining = initialSec - elapsedSec;
-  if (currentRemaining <= 0) {
-    return '곧 도착';
-  }
+  const currentRemaining = Math.max(0, initialSec - elapsedSec);
 
   const bracketMatch = rawMsg.match(/\[.*?\]/);
   const suffix = bracketMatch ? bracketMatch[0] : '';
@@ -286,8 +284,13 @@ function formatBusCountdownMsg(initialSec: number, elapsedSec: number, rawMsg: s
 
   if (m > 0) {
     return `${m}분 ${s}초후${suffix}`;
-  } else {
+  } else if (s > 0) {
     return `${s}초후${suffix}`;
+  } else {
+    if (rawMsg.includes('곧') || rawMsg.includes('진입')) {
+      return '곧 도착';
+    }
+    return `0초후${suffix}`;
   }
 }
 
