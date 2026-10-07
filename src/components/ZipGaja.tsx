@@ -11,6 +11,8 @@ interface SubwayArrival {
   arvlMsg3: string; // "독립문"
   btrainSttus: string; // "일반"
   recptnDt: string;
+  barvlDt?: string; // Remaining seconds string from API
+  arvlCd?: string;
 }
 
 interface BusArrival {
@@ -93,6 +95,68 @@ function formatAmPm(date: Date = new Date()): string {
 function formatSubwayArvlMsg(msg: string): string {
   if (!msg) return '';
   return msg.replace(/\s*\([^)]*\)/g, '').trim();
+}
+
+/**
+ * Parse Subway API recptnDt string (YYYY-MM-DD HH:mm:ss) into timestamp ms
+ */
+function parseRecptnDt(dtStr?: string): number {
+  if (!dtStr) return Date.now();
+  const iso = dtStr.replace(' ', 'T');
+  const t = new Date(iso).getTime();
+  return isNaN(t) ? Date.now() : t;
+}
+
+/**
+ * Calculate compensated subway arrival message by subtracting elapsed seconds since recptnDt
+ */
+function getCompensatedSubwayMsg(item: SubwayArrival, now: number): string {
+  if (!item) return '';
+
+  const recptnTime = parseRecptnDt(item.recptnDt);
+  const elapsedSec = Math.max(0, Math.floor((now - recptnTime) / 1000));
+
+  let initialSec = NaN;
+  if (item.barvlDt) {
+    const parsedBarvl = parseInt(item.barvlDt, 10);
+    if (!isNaN(parsedBarvl) && parsedBarvl > 0) {
+      initialSec = parsedBarvl;
+    }
+  }
+
+  if (isNaN(initialSec) && item.arvlMsg2) {
+    const minMatch = item.arvlMsg2.match(/(\d+)\s*분/);
+    const secMatch = item.arvlMsg2.match(/(\d+)\s*초/);
+    if (minMatch || secMatch) {
+      const m = minMatch ? parseInt(minMatch[1], 10) : 0;
+      const s = secMatch ? parseInt(secMatch[1], 10) : 0;
+      initialSec = m * 60 + s;
+    }
+  }
+
+  if (!isNaN(initialSec)) {
+    const adjustedSec = initialSec - elapsedSec;
+    if (adjustedSec <= 0) {
+      return '도착';
+    }
+    const m = Math.floor(adjustedSec / 60);
+    const s = adjustedSec % 60;
+    if (m > 0) {
+      return `${m}분 ${s}초 후`;
+    } else {
+      return `${s}초 후`;
+    }
+  }
+
+  const cleanMsg = formatSubwayArvlMsg(item.arvlMsg2);
+  if (cleanMsg.includes('도착') || cleanMsg.includes('진입')) {
+    return cleanMsg;
+  }
+  if (cleanMsg.includes('전역') && elapsedSec >= 45) {
+    return '진입';
+  }
+
+  return cleanMsg;
 }
 
 /**
@@ -471,42 +535,46 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {subwayUpbound.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-white rounded-lg p-2.5 border border-[#e6dfd8] flex items-center justify-between shadow-2xs hover:border-[#EF6C00] transition-colors"
-                      >
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[13px] font-bold text-[#141413]">
-                              {item.bstatnNm}행
+                    {subwayUpbound.map((item, idx) => {
+                      const displayMsg = getCompensatedSubwayMsg(item, now);
+
+                      return (
+                        <div
+                          key={idx}
+                          className="bg-white rounded-lg p-2.5 border border-[#e6dfd8] flex items-center justify-between shadow-2xs hover:border-[#EF6C00] transition-colors"
+                        >
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[13px] font-bold text-[#141413]">
+                                {item.bstatnNm}행
+                              </span>
+                              {item.btrainSttus === '급행' && (
+                                <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                                  급행
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-[#6c6a64] mt-0.5 block">
+                              {item.trainLineNm}
                             </span>
-                            {item.btrainSttus === '급행' && (
-                              <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
-                                급행
+                          </div>
+                          <div className="text-right">
+                            <span className={`inline-block text-[12px] font-extrabold px-2 py-0.5 rounded-full ${
+                              displayMsg.includes('도착') || displayMsg.includes('진입')
+                                ? 'bg-[#ffe0b2] text-[#e65100] animate-pulse'
+                                : 'bg-[#efe9de] text-[#141413]'
+                            }`}>
+                              {displayMsg}
+                            </span>
+                            {item.arvlMsg3 && item.arvlMsg3 !== item.statnNm && (
+                              <span className="text-[10px] text-[#8e8b82] block mt-0.5">
+                                ({item.arvlMsg3})
                               </span>
                             )}
                           </div>
-                          <span className="text-[11px] text-[#6c6a64] mt-0.5 block">
-                            {item.trainLineNm}
-                          </span>
                         </div>
-                        <div className="text-right">
-                          <span className={`inline-block text-[12px] font-extrabold px-2 py-0.5 rounded-full ${
-                            item.arvlMsg2.includes('도착') || item.arvlMsg2.includes('진입')
-                              ? 'bg-[#ffe0b2] text-[#e65100] animate-pulse'
-                              : 'bg-[#efe9de] text-[#141413]'
-                          }`}>
-                            {formatSubwayArvlMsg(item.arvlMsg2)}
-                          </span>
-                          {item.arvlMsg3 && item.arvlMsg3 !== item.statnNm && (
-                            <span className="text-[10px] text-[#8e8b82] block mt-0.5">
-                              ({item.arvlMsg3})
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -531,42 +599,46 @@ export const ZipGaja: React.FC<ZipGajaProps> = ({ onRegisterRefresh }) => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {subwayDownbound.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-white rounded-lg p-2.5 border border-[#e6dfd8] flex items-center justify-between shadow-2xs hover:border-[#EF6C00] transition-colors"
-                      >
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[13px] font-bold text-[#141413]">
-                              {item.bstatnNm}행
+                    {subwayDownbound.map((item, idx) => {
+                      const displayMsg = getCompensatedSubwayMsg(item, now);
+
+                      return (
+                        <div
+                          key={idx}
+                          className="bg-white rounded-lg p-2.5 border border-[#e6dfd8] flex items-center justify-between shadow-2xs hover:border-[#EF6C00] transition-colors"
+                        >
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[13px] font-bold text-[#141413]">
+                                {item.bstatnNm}행
+                              </span>
+                              {item.btrainSttus === '급행' && (
+                                <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                                  급행
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-[#6c6a64] mt-0.5 block">
+                              {item.trainLineNm}
                             </span>
-                            {item.btrainSttus === '급행' && (
-                              <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
-                                급행
+                          </div>
+                          <div className="text-right">
+                            <span className={`inline-block text-[12px] font-extrabold px-2 py-0.5 rounded-full ${
+                              displayMsg.includes('도착') || displayMsg.includes('진입')
+                                ? 'bg-[#ffe0b2] text-[#e65100] animate-pulse'
+                                : 'bg-[#efe9de] text-[#141413]'
+                            }`}>
+                              {displayMsg}
+                            </span>
+                            {item.arvlMsg3 && item.arvlMsg3 !== item.statnNm && (
+                              <span className="text-[10px] text-[#8e8b82] block mt-0.5">
+                                ({item.arvlMsg3})
                               </span>
                             )}
                           </div>
-                          <span className="text-[11px] text-[#6c6a64] mt-0.5 block">
-                            {item.trainLineNm}
-                          </span>
                         </div>
-                        <div className="text-right">
-                          <span className={`inline-block text-[12px] font-extrabold px-2 py-0.5 rounded-full ${
-                            item.arvlMsg2.includes('도착') || item.arvlMsg2.includes('진입')
-                              ? 'bg-[#ffe0b2] text-[#e65100] animate-pulse'
-                              : 'bg-[#efe9de] text-[#141413]'
-                          }`}>
-                            {formatSubwayArvlMsg(item.arvlMsg2)}
-                          </span>
-                          {item.arvlMsg3 && item.arvlMsg3 !== item.statnNm && (
-                            <span className="text-[10px] text-[#8e8b82] block mt-0.5">
-                              ({item.arvlMsg3})
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
