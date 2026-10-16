@@ -93,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
             href={
               currentPage === 'news'
                 ? 'https://autowayif.hdec.co.kr/NewsPaper/NewsPaperViewNew.aspx?Seq='
-                : 'https://siteinfo.hdec.co.kr/m_SiteInfo.aspx'
+                : 'https://autowayif.hdec.co.kr/SiteInfo/m_SiteInfo.aspx'
             }
             target="_blank"
             rel="noopener noreferrer"

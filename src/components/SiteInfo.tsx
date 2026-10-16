@@ -1,7 +1,7 @@
 import React from 'react';
 
 export const SiteInfo: React.FC = () => {
-  const targetUrl = "https://siteinfo.hdec.co.kr/m_SiteInfo.aspx";
+  const targetUrl = "https://autowayif.hdec.co.kr/SiteInfo/m_SiteInfo.aspx";
 
   return (
     <div className="w-full h-[calc(100vh-48px)] bg-[#faf9f5]">
