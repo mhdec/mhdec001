@@ -36,7 +36,7 @@ export default defineConfig({
         rewrite: (path) => {
           const url = new URL(path, 'http://localhost');
           const station = url.searchParams.get('station') || '안국';
-          return `/api/subway/${SUBWAY_SERVICE_KEY}/json/realtimeStationArrival/1/10/${encodeURIComponent(station)}`;
+          return `/api/subway/${SUBWAY_SERVICE_KEY}/json/realtimeStationArrival/1/20/${encodeURIComponent(station)}`;
         },
       },
     },

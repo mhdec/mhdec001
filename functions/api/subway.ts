@@ -30,7 +30,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const stationName = encodeURIComponent(url.searchParams.get('station') || '안국');
   const serviceKey = getSubwayServiceKey();
 
-  const targetUrl = `http://swopenapi.seoul.go.kr/api/subway/${serviceKey}/json/realtimeStationArrival/1/10/${stationName}`;
+  const targetUrl = `http://swopenapi.seoul.go.kr/api/subway/${serviceKey}/json/realtimeStationArrival/1/20/${stationName}`;
 
   try {
     const res = await fetch(targetUrl);
