@@ -14,14 +14,15 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    const fileId = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${file.name}`;
+    const fileName = (file.name || 'file').normalize('NFC');
+    const fileId = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${fileName}`;
     const uploadedAt = new Date().toISOString();
 
     if (context.env.FILE_BUCKET) {
       await context.env.FILE_BUCKET.put(fileId, file.stream(), {
         httpMetadata: { contentType: file.type },
         customMetadata: {
-          originalName: file.name,
+          originalName: fileName,
           uploadedAt,
           size: String(file.size),
         },
@@ -31,7 +32,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return new Response(
       JSON.stringify({
         id: fileId,
-        name: file.name,
+        name: fileName,
         size: file.size,
         type: file.type,
         uploadedAt,

@@ -98,13 +98,26 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
     return () => clearInterval(timer);
   }, []);
 
+// Helper to normalize card text to NFC (preventing macOS NFD jamo decomposition)
+function normalizeCardNFC(card: FileGroupCard): FileGroupCard {
+  return {
+    ...card,
+    title: (card.title || '').normalize('NFC'),
+    tag: (card.tag || '').normalize('NFC'),
+    files: (card.files || []).map((file) => ({
+      ...file,
+      name: (file.name || '').normalize('NFC'),
+    })),
+  };
+}
+
   // Fetch Cards (Cloudflare API & IndexedDB sync)
   const loadCards = useCallback(async (isManualRefresh = false) => {
     try {
       const res = await fetch(`/api/files?_t=${Date.now()}`);
       if (res.ok) {
         const data: any = await res.json();
-        const serverCards: FileGroupCard[] = data.cards || [];
+        const serverCards: FileGroupCard[] = (data.cards || []).map(normalizeCardNFC);
         const valid = serverCards.filter((card) => {
           const age = Date.now() - new Date(card.uploadedAt).getTime();
           return age < EXPIRATION_MS;
@@ -125,7 +138,7 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
       console.warn('Using IndexedDB fallback for Cards');
     }
 
-    const localCards = await loadCardsFromDB();
+    const localCards = (await loadCardsFromDB()).map(normalizeCardNFC);
     const valid = localCards.filter((card) => {
       const age = Date.now() - new Date(card.uploadedAt).getTime();
       return age < EXPIRATION_MS;
@@ -215,7 +228,7 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
 
       const fileItem: FileItem = {
         id: `${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${i}`,
-        name: file.name,
+        name: file.name.normalize('NFC'),
         size: file.size,
         type: file.type,
         dataUrl,
@@ -225,14 +238,15 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
     }
 
     // Process Tags (#prefix clean up)
-    let formattedTags = tagInput.trim();
+    let formattedTags = tagInput.trim().normalize('NFC');
     if (formattedTags && !formattedTags.startsWith('#')) {
       formattedTags = '#' + formattedTags.replace(/\s+/g, ' #');
     }
 
+    const firstFileName = selectedFiles[0].name.normalize('NFC');
     const newCard: FileGroupCard = {
       id: `card_${Date.now()}`,
-      title: titleInput.trim() || `${selectedFiles[0].name} 외 ${selectedFiles.length - 1}개`,
+      title: titleInput.trim().normalize('NFC') || `${firstFileName} 외 ${selectedFiles.length - 1}개`,
       tag: formattedTags,
       uploadedAt: new Date().toISOString(),
       files: fileItems,
@@ -316,13 +330,15 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
       createdBlobUrl = true;
     }
 
+    const normalizedFileName = (file.name || 'download').normalize('NFC');
+
     if (isIOS) {
       setDownloadToast(`📥 파일 다운로드 시도 중 ('파일' 앱 ➜ '다운로드' 폴더 확인)`);
       setTimeout(() => setDownloadToast(null), 4000);
 
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = file.name;
+      link.download = normalizedFileName;
       // Do NOT set target='_blank' on iOS; target='_blank' forces Safari to open PDFs inline instead of downloading
       document.body.appendChild(link);
       link.click();
@@ -334,7 +350,7 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
     } else {
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = file.name;
+      link.download = normalizedFileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -392,13 +408,14 @@ export const FileTransfer: React.FC<FileTransferProps> = ({ onRegisterRefresh })
     }
   };
 
-  // Filter Cards by Search Query (Title or Tag)
+  // Filter Cards by Search Query (Title, Tag, or File name)
   const filteredCards = cards.filter((card) => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = searchQuery.trim().toLowerCase().normalize('NFC');
     if (!query) return true;
     return (
-      card.title.toLowerCase().includes(query) ||
-      card.tag.toLowerCase().includes(query)
+      card.title.toLowerCase().normalize('NFC').includes(query) ||
+      card.tag.toLowerCase().normalize('NFC').includes(query) ||
+      card.files.some((f) => f.name.toLowerCase().normalize('NFC').includes(query))
     );
   });
 

@@ -16,13 +16,20 @@ export const MemoAndJapanese: React.FC<MemoAndJapaneseProps> = ({ thinkTab }) =>
   const [titleInput, setTitleInput] = useState<string>('');
   const [contentInput, setContentInput] = useState<string>('');
 
+  const normalizeMemoNFC = (m: MemoItem): MemoItem => ({
+    ...m,
+    title: (m.title || '').normalize('NFC'),
+    content: (m.content || '').normalize('NFC'),
+  });
+
   // Fetch Memos (Cloudflare KV/D1 API or LocalStorage fallback)
   const loadMemos = async () => {
     try {
       const res = await fetch('/api/memos');
       if (res.ok) {
         const data: any = await res.json();
-        setMemos(data.memos || []);
+        const serverMemos: MemoItem[] = (data.memos || []).map(normalizeMemoNFC);
+        setMemos(serverMemos);
         return;
       }
     } catch (err) {
@@ -32,7 +39,8 @@ export const MemoAndJapanese: React.FC<MemoAndJapaneseProps> = ({ thinkTab }) =>
     const local = localStorage.getItem('mhdec_memos');
     if (local) {
       try {
-        setMemos(JSON.parse(local));
+        const parsed = JSON.parse(local);
+        setMemos(Array.isArray(parsed) ? parsed.map(normalizeMemoNFC) : []);
       } catch (e) {
         setMemos([]);
       }
@@ -90,15 +98,18 @@ export const MemoAndJapanese: React.FC<MemoAndJapaneseProps> = ({ thinkTab }) =>
   const handleSaveMemo = () => {
     if (!titleInput.trim() && !contentInput.trim()) return;
 
+    const normalizedTitle = (titleInput.trim() || '제목 없음').normalize('NFC');
+    const normalizedContent = contentInput.normalize('NFC');
     const nowIso = new Date().toISOString();
+
     if (currentMemoId) {
       // Edit existing
       const updated = memos.map((m) =>
         m.id === currentMemoId
           ? {
               ...m,
-              title: titleInput.trim() || '제목 없음',
-              content: contentInput,
+              title: normalizedTitle,
+              content: normalizedContent,
               updatedAt: nowIso,
             }
           : m
@@ -108,8 +119,8 @@ export const MemoAndJapanese: React.FC<MemoAndJapaneseProps> = ({ thinkTab }) =>
       // Add new
       const newMemo: MemoItem = {
         id: `${Date.now()}`,
-        title: titleInput.trim() || '제목 없음',
-        content: contentInput,
+        title: normalizedTitle,
+        content: normalizedContent,
         createdAt: nowIso,
         updatedAt: nowIso,
       };
