@@ -1,5 +1,5 @@
 import React from 'react';
-import { Smartphone, Globe, ExternalLink, Clock, AppWindow, ShieldCheck } from 'lucide-react';
+import { Smartphone, Globe, ExternalLink, Gift } from 'lucide-react';
 
 interface AppItem {
   id: string;
@@ -39,6 +39,13 @@ export const IgoeItNa: React.FC = () => {
       description: '모바일 행정/FMC 스마트 비즈폰 서비스',
       tag: '로그인',
     },
+    {
+      id: 'otp',
+      name: 'OTP',
+      url: 'https://otp.hdec.co.kr',
+      description: '현대건설 모바일 OTP 인증 서비스',
+      tag: 'OTP 인증',
+    },
   ];
 
   const mobilePages: AppItem[] = [
@@ -48,6 +55,44 @@ export const IgoeItNa: React.FC = () => {
       url: 'https://hpms.hdec.co.kr/HDeSP/pSiteSafe/HQInspection/SafetyHQInspectionListM.aspx',
       description: '현장 안전/품질 점검 모바일 웹 서비스',
       tag: '모바일 웹',
+    },
+    {
+      id: 'safewallet',
+      name: '안전지갑',
+      url: 'https://hsw.hdec.co.kr/m/manage/login',
+      description: '현대건설 모바일 안전지갑 서비스',
+      tag: '모바일 웹',
+    },
+    {
+      id: 'bss',
+      name: 'BSS',
+      url: 'https://mbss.hdec.co.kr',
+      description: '현대건설 모바일 BSS 서비스',
+      tag: '모바일 웹',
+    },
+  ];
+
+  const welfareItems: AppItem[] = [
+    {
+      id: 'kyobo-ebook',
+      name: '교보 e-Book',
+      url: 'https://hdec.dkyobobook.co.kr',
+      description: '현대건설 전자도서관 (교보문고)',
+      tag: '전자도서관',
+    },
+    {
+      id: 'employee-mall',
+      name: '임직원 쇼핑몰',
+      url: 'https://mgift.e-hyundai.com/hb2efront_new/frcmLoginF.do?shopevent_sts=102&shopevent_no=1135115712&pentr_no=2100002443',
+      description: '현대백화점 임직원 전용 쇼핑몰 (Hmall)',
+      tag: '임직원몰',
+    },
+    {
+      id: 'benecafe',
+      name: '복지 포인트몰',
+      url: 'https://cert.benecafe.co.kr/member/login?&cmpyNo=O04',
+      description: '베네카페(Benecafe) 복지 포인트몰',
+      tag: '포인트몰',
     },
   ];
 
@@ -145,24 +190,47 @@ export const IgoeItNa: React.FC = () => {
       </section>
 
       {/* ========================================================================= */}
-      {/* 3. 준비중                                                                 */}
+      {/* 3. 복지                                                                   */}
       {/* ========================================================================= */}
       <section className="space-y-3">
         <div className="flex items-center gap-2 border-b border-[#e6dfd8] pb-2 px-1">
-          <Clock className="w-4 h-4 text-[#8e8b82]" />
-          <h2 className="text-[15px] font-bold text-[#141413]">준비중</h2>
+          <Gift className="w-4 h-4 text-[#7c3aed]" />
+          <h2 className="text-[15px] font-bold text-[#141413]">복지</h2>
+          <span className="text-[11px] text-[#6c6a64] bg-[#efe9de] px-2 py-0.5 rounded-full font-medium">
+            {welfareItems.length}개
+          </span>
         </div>
 
-        <div className="bg-[#efe9de]/50 border border-dashed border-[#e6dfd8] p-6 rounded-2xl text-center space-y-1">
-          <div className="inline-flex p-3 rounded-full bg-[#faf9f5] text-[#8e8b82] mb-1">
-            <Clock className="w-6 h-6 animate-pulse" />
-          </div>
-          <h3 className="text-[14px] font-bold text-[#6c6a64]">
-            추가 서비스 준비중
-          </h3>
-          <p className="text-[12px] text-[#8e8b82]">
-            새로운 모바일 서비스 및 편의 링크가 지속적으로 추가될 예정입니다.
-          </p>
+        <div className="grid grid-cols-1 gap-3">
+          {welfareItems.map((item) => (
+            <a
+              key={item.id}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group bg-white rounded-xl p-4 border border-[#e6dfd8] hover:border-[#7c3aed] shadow-xs hover:shadow-md transition-all flex items-center justify-between cursor-pointer active:scale-98"
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-[16px] text-[#141413] group-hover:text-[#7c3aed] transition-colors">
+                    {item.name}
+                  </span>
+                  {item.tag && (
+                    <span className="text-[10px] font-semibold bg-[#efe9de] text-[#6c6a64] px-2 py-0.5 rounded-md border border-[#e6dfd8]">
+                      {item.tag}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[12px] text-[#6c6a64] line-clamp-1">
+                  {item.description}
+                </p>
+              </div>
+
+              <div className="p-2 rounded-lg bg-[#faf9f5] group-hover:bg-[#efe9de] border border-[#e6dfd8] transition-colors shrink-0">
+                <ExternalLink className="w-4 h-4 text-[#7c3aed]" />
+              </div>
+            </a>
+          ))}
         </div>
       </section>
     </div>
