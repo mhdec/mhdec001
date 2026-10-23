@@ -61,16 +61,49 @@ async function findPreferredImageUrl(yyyyMM: string, yyyyMMdd: string, index: nu
 export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const [mealImages, setMealImages] = useState<string[]>([]);
   const [loadingMeals, setLoadingMeals] = useState<boolean>(true);
+  const [seoul, setSeoul] = useState(getSeoulTimeParts);
 
-  const seoul = getSeoulTimeParts();
-  const isBefore755 = seoul.hour < 7 || (seoul.hour === 7 && seoul.minute < 55);
+  // 주기적으로 서울 시간 갱신 (시간대 전환 감지용)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSeoul(getSeoulTimeParts());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 분 단위 환산 (0 ~ 1439)
+  const currentMinutes = seoul.hour * 60 + seoul.minute;
+  // 17:30 (1050분) ~ 23:59: 미노출 시간대
+  const isClosed = currentMinutes >= 1050;
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadMealImages() {
+      // 17:30 ~ 23:59: 보여주지 않음
+      if (isClosed) {
+        if (isMounted) {
+          setMealImages([]);
+          setLoadingMeals(false);
+        }
+        return;
+      }
+
       setLoadingMeals(true);
-      const targetIndices = isBefore755 ? [1] : [2, 3, 4];
+
+      // 시간대별 대상 이미지 인덱스:
+      // - 00:00 ~ 07:54 (0 <= m < 475): 조식 [1]
+      // - 07:55 ~ 12:59 (475 <= m < 780): 중식/석식 [2, 3, 4]
+      // - 13:00 ~ 17:29 (780 <= m < 1050): 다시 조식 [1]
+      let targetIndices: number[] = [];
+      if (currentMinutes < 475) {
+        targetIndices = [1];
+      } else if (currentMinutes < 780) {
+        targetIndices = [2, 3, 4];
+      } else {
+        targetIndices = [1];
+      }
+
       const validUrls: string[] = [];
 
       for (const idx of targetIndices) {
@@ -89,7 +122,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     return () => {
       isMounted = false;
     };
-  }, [isBefore755, seoul.yyyyMM, seoul.yyyyMMdd]);
+  }, [currentMinutes, isClosed, seoul.yyyyMM, seoul.yyyyMMdd]);
 
   const mainButtons = [
     {
@@ -138,15 +171,6 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       iconColor: 'text-[#cc785c]',
     },
     {
-      id: 'site' as PageType,
-      label: '현장어데고!',
-      sub: '현장 정보 안내',
-      icon: MapPin,
-      bgColor: 'bg-[#efe9de]',
-      hoverColor: 'hover:bg-[#e8e0d2]',
-      iconColor: 'text-[#cc785c]',
-    },
-    {
       id: 'igoeitna' as PageType,
       label: '이거있나?',
       sub: '모바일 앱 & 웹 링크',
@@ -154,6 +178,17 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       bgColor: 'bg-[#efe9de]',
       hoverColor: 'hover:bg-[#e8e0d2]',
       iconColor: 'text-[#cc785c]',
+    },
+    // 추후 재활성화를 위해 데이터 보존 (현재 메인 화면에서 숨김)
+    {
+      id: 'site' as PageType,
+      label: '현장어데고!',
+      sub: '현장 정보 안내',
+      icon: MapPin,
+      bgColor: 'bg-[#efe9de]',
+      hoverColor: 'hover:bg-[#e8e0d2]',
+      iconColor: 'text-[#cc785c]',
+      hidden: true,
     },
     {
       id: 'lotto' as PageType,
@@ -163,6 +198,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       bgColor: 'bg-[#efe9de]',
       hoverColor: 'hover:bg-[#e8e0d2]',
       iconColor: 'text-[#cc785c]',
+      hidden: true,
     },
   ];
 
@@ -170,7 +206,9 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     <div className="w-full max-w-lg mx-auto px-4 py-3 space-y-5">
       {/* 2-Column Main Navigation Buttons */}
       <section className="grid grid-cols-2 gap-3" aria-label="메인 메뉴">
-        {mainButtons.map((btn) => {
+        {mainButtons
+          .filter((btn) => !btn.hidden)
+          .map((btn) => {
           const IconComponent = btn.icon;
           return (
             <button
@@ -192,36 +230,38 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         })}
       </section>
 
-      {/* Today's Meal Banner Section */}
-      <section className="space-y-3">
-        <div className="border-b border-[#e6dfd8] pb-1.5 px-0.5">
-          <span className="text-[13px] font-semibold text-[#6c6a64]">
-            🍱 오늘의 식단
-          </span>
-        </div>
+      {/* Today's Meal Banner Section: 17:30 ~ 23:59 시간대에는 미노출 */}
+      {!isClosed && (
+        <section className="space-y-3">
+          <div className="border-b border-[#e6dfd8] pb-1.5 px-0.5">
+            <span className="text-[13px] font-semibold text-[#6c6a64]">
+              🍱 오늘의 식단
+            </span>
+          </div>
 
-        {loadingMeals ? (
-          <div className="p-6 text-center text-[13px] text-[#6c6a64] bg-[#efe9de]/50 rounded-xl border border-[#e6dfd8] animate-pulse">
-            오늘의 식단 이미지를 확인하고 있습니다...
-          </div>
-        ) : mealImages.length > 0 ? (
-          <div className="space-y-3">
-            {mealImages.map((imgUrl, i) => (
-              <div
-                key={i}
-                className="overflow-hidden rounded-xl border border-[#e6dfd8] bg-white shadow-xs"
-              >
-                <img
-                  src={imgUrl}
-                  alt={`오늘의 식단 ${i + 1}`}
-                  className="w-full h-auto object-cover block"
-                  loading="lazy"
-                />
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </section>
+          {loadingMeals ? (
+            <div className="p-6 text-center text-[13px] text-[#6c6a64] bg-[#efe9de]/50 rounded-xl border border-[#e6dfd8] animate-pulse">
+              오늘의 식단 이미지를 확인하고 있습니다...
+            </div>
+          ) : mealImages.length > 0 ? (
+            <div className="space-y-3">
+              {mealImages.map((imgUrl, i) => (
+                <div
+                  key={i}
+                  className="overflow-hidden rounded-xl border border-[#e6dfd8] bg-white shadow-xs"
+                >
+                  <img
+                    src={imgUrl}
+                    alt={`오늘의 식단 ${i + 1}`}
+                    className="w-full h-auto object-cover block"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      )}
     </div>
   );
 };
